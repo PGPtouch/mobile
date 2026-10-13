@@ -1,6 +1,6 @@
 name: mobile
 description: Mobile client for the PGPtouch protocol that includes various additional features.
-publish_to: 'none'
+publish_to: none
 version: 0.1.0+1
 
 environment:
@@ -9,9 +9,17 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  material_ui: ^1.6.0
+  cupertino_ui: ^1.0.0
+  material_helper: any
+  material_graphics: any
+
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+
   dart_pg: ^2.1.0
   bluetooth_low_energy: ^6.2.1
-  bluetooth_low_energy_android: any
   nfc_util: ^3.3.0
   shared:
     git: https://github.com/PGPtouch/shared.git
@@ -26,9 +34,20 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  generate: true
+  assets:
+    - assets/icon/
 
 dependency_overrides:
   bluetooth_low_energy_android:
     git: https://github.com/PGPtouch/bluetooth_low_energy_android.git
+  material_helper:
+    git:
+      url: https://github.com/JHubi1/material.git
+      path: packages/material_helper
+  material_graphics:
+    git:
+      url: https://github.com/JHubi1/material.git
+      path: packages/material_graphics
   # shared:
   #   path: C:/Users/jakob/Documents/GitHub/shared

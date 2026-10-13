@@ -1,0 +1,148 @@
+{
+    "@@locale": "en",
+    "appTitle": "PGPtouch",
+    "@appTitle": {
+        "description": "The title of the application",
+        "context": "App title and app bar title"
+    },
+    "contactModeInitializing": "Initializing...",
+    "@contactModeInitializing": {
+        "description": "Headline shown while the transaction is initializing",
+        "context": "Main screen, transaction status headline"
+    },
+    "contactModeTapOther": "Tap device",
+    "@contactModeTapOther": {
+        "description": "Headline instructing the user to tap the other device",
+        "context": "Main screen, transaction status headline"
+    },
+    "contactModeHoldOther": "Hold...",
+    "@contactModeHoldOther": {
+        "description": "Headline instructing the user to keep holding the devices together",
+        "context": "Main screen, transaction status headline"
+    },
+    "transactionSuccess": "Success!",
+    "@transactionSuccess": {
+        "description": "Headline shown when the transaction finished successfully",
+        "context": "Main screen, transaction status headline"
+    },
+    "transactionFailure": "Failure",
+    "@transactionFailure": {
+        "description": "Headline shown when the transaction did not finish successfully",
+        "context": "Main screen, transaction status headline"
+    },
+    "unknown": "Unknown",
+    "@unknown": {
+        "description": "Fallback shown when a value is not known",
+        "context": "Main screen, transaction details"
+    },
+    "deviceRole": "Device Role: {role}",
+    "@deviceRole": {
+        "description": "Label showing the role of this device in the transaction",
+        "context": "Main screen, transaction details",
+        "placeholders": {
+            "role": {
+                "type": "String"
+            }
+        }
+    },
+    "transactionResult": "Result: {result}",
+    "@transactionResult": {
+        "description": "Label showing the result of the transaction",
+        "context": "Main screen, transaction details",
+        "placeholders": {
+            "result": {
+                "type": "String"
+            }
+        }
+    },
+    "transactionError": "Error: {error}",
+    "@transactionError": {
+        "description": "Label showing the error mode of a failed transaction",
+        "context": "Main screen, transaction details",
+        "placeholders": {
+            "error": {
+                "type": "String"
+            }
+        }
+    },
+    "transactionFailureReason": "Failure: {reason}",
+    "@transactionFailureReason": {
+        "description": "Label showing the failure mode of a failed transaction",
+        "context": "Main screen, transaction details",
+        "placeholders": {
+            "reason": {
+                "type": "String"
+            }
+        }
+    },
+    "transactionAdditionalInfo": "({info})",
+    "@transactionAdditionalInfo": {
+        "description": "Additional details about a failed transaction, shown in parentheses",
+        "context": "Main screen, transaction details",
+        "placeholders": {
+            "info": {
+                "type": "String"
+            }
+        }
+    },
+    "noDetails": "No details",
+    "@noDetails": {
+        "description": "Fallback shown when a failed transaction has no additional details",
+        "context": "Main screen, transaction details"
+    },
+    "stopTransaction": "Stop transaction",
+    "@stopTransaction": {
+        "description": "Button label to stop the current transaction",
+        "context": "Main screen, transaction buttons"
+    },
+    "restartTransaction": "Restart transaction",
+    "@restartTransaction": {
+        "description": "Button label to restart the transaction",
+        "context": "Main screen, transaction buttons"
+    },
+    "generateKeys": "Generate keys",
+    "@generateKeys": {
+        "description": "Button label to generate a new PGP key pair",
+        "context": "Main screen, setup buttons"
+    },
+    "grantPermissions": "Grant permissions",
+    "@grantPermissions": {
+        "description": "Button label to request the required Bluetooth or location permissions",
+        "context": "Main screen, setup buttons"
+    },
+    "enableNfc": "Enable NFC",
+    "@enableNfc": {
+        "description": "Button label to open the system settings to turn on NFC",
+        "context": "Main screen, setup buttons"
+    },
+    "enableBluetooth": "Enable Bluetooth",
+    "@enableBluetooth": {
+        "description": "Button label to open the system settings to turn on Bluetooth",
+        "context": "Main screen, setup buttons"
+    },
+    "startTransaction": "Start transaction",
+    "@startTransaction": {
+        "description": "Button label to start a transaction",
+        "context": "Main screen, setup buttons"
+    },
+    "nfcNotAvailable": "NFC is not available on this device.",
+    "@nfcNotAvailable": {
+        "description": "Message shown when the device has no NFC hardware",
+        "context": "Main screen, availability messages"
+    },
+    "bluetoothNotAvailable": "Bluetooth is not available on this device.",
+    "@bluetoothNotAvailable": {
+        "description": "Message shown when the device has no Bluetooth hardware",
+        "context": "Main screen, availability messages"
+    },
+    "tapToShareInterferingTitle": "Tap to share is interfering",
+    "@tapToShareInterferingTitle": {
+        "description": "Title of the warning shown when Android's Tap to share could not be blocked",
+        "context": "Main screen, bottom warning banner"
+    },
+    "tapToShareInterferingMessage": "Android's Tap to share could not be blocked. Turn it off in Settings > Google > Quick Share > Tap to share, or taps may open the contact-share popup.",
+    "@tapToShareInterferingMessage": {
+        "description": "Explanation and instructions for the warning shown when Android's Tap to share could not be blocked",
+        "context": "Main screen, bottom warning banner"
+    }
+}

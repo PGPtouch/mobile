@@ -3,8 +3,14 @@ import 'dart:async';
 import 'package:bluetooth_low_energy/bluetooth_low_energy.dart';
 import 'package:dart_pg/dart_pg.dart';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:flutter/material.dart';
+import 'package:material_helper/material_helper.dart';
+import 'package:material_graphics/material_graphics.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_localizations/flutter_localizations.dart'
+    show GlobalWidgetsLocalizations;
+import 'package:mobile/l10n/app_localizations.dart';
 import 'package:nfc_util/android.dart' as nfc_android;
 import 'package:nfc_util/nfc_util.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -14,27 +20,530 @@ import 'package:open_settings_plus/open_settings_plus.dart';
 import 'states.dart';
 
 void main() {
+  materialAppsFallbackColor = Colors.teal;
   runApp(const MainApp());
 }
 
-class MainApp extends StatefulWidget {
+class MainApp extends StatelessWidget {
   const MainApp({super.key});
 
   @override
-  State<MainApp> createState() => _MainAppState();
+  Widget build(BuildContext context) => ThemedMaterialApp(
+    title: null,
+    onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
+    home: MainScreen(),
+    // The generated AppLocalizations.localizationsDelegates use the Material and
+    // Cupertino delegates of the Flutter SDK, which don't match the types used
+    // by material_ui / cupertino_ui.
+    localizationsDelegates: [
+      MaterialHelperLocalizations.delegate,
+      AppLocalizations.delegate,
+      ...GlobalMaterialLocalizations.delegates,
+    ],
+    supportedLocales: AppLocalizations.supportedLocales,
+    useSystemColorScheme: false,
+  );
 }
 
-class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
+class MainScreen extends StatefulWidget {
+  const new({super.key});
+
+  @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
   bool _isGeneratingKeys = false;
   PrivateKey? _keyPair;
 
+  Future<void> _generateKeys() async {
+    if (_isGeneratingKeys) return;
+    setState(() => _isGeneratingKeys = true);
+
+    final keyPair = await compute(
+      (_) => OpenPGP.generateKey(
+        ["Device <device@example.com>"],
+        "passphrase",
+        type: KeyType.rsa,
+      ) as PrivateKey,
+      null,
+    );
+    if (!mounted) return;
+    setState(() {
+      _keyPair = keyPair;
+      _isGeneratingKeys = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ProtocolPermissionBuilder(
+      builder: (permissions) => ProtocolManagerBuilder(
+        builder: (protocol) {
+          final displayState = protocol.displayState?.lastEvent;
+          final contactMode = displayState?.contactMode;
+          final deviceRole = displayState?.deviceRole;
+          final result = displayState?.result;
+
+          Future<void> start() async {
+            if (_keyPair == null) return;
+            await protocol.start(
+              Uint8List.fromList(_keyPair!.publicKey.packetList.encode()),
+              Uint8List.fromList(_keyPair!.packetList.encode()),
+              privateKeyPassphrase: "passphrase",
+            );
+          }
+
+          final body = Builder(
+            builder: (context) {
+              final appLocalizations = AppLocalizations.of(context);
+              return Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.max,
+                children: contactMode != null
+                    ? [
+                        Text(switch (contactMode.value) {
+                          .initializing =>
+                            appLocalizations.contactModeInitializing,
+                          .tapOther => appLocalizations.contactModeTapOther,
+                          .holdOther => appLocalizations.contactModeHoldOther,
+                          .done =>
+                            result?.value?.mode == .success
+                                ? appLocalizations.transactionSuccess
+                                : appLocalizations.transactionFailure,
+                        }, style: Theme.of(context).textTheme.headlineLarge),
+                        Text(
+                          appLocalizations.deviceRole(
+                            deviceRole?.value?.name ?? appLocalizations.unknown,
+                          ),
+                        ),
+                        Text(
+                          appLocalizations.transactionResult(
+                            result?.value?.mode.toString() ??
+                                appLocalizations.unknown,
+                          ),
+                        ),
+                        if (result?.value?.additionalInfo != null &&
+                            result?.value?.mode == .success)
+                          Card.outlined(
+                            margin: EdgeInsets.symmetric(vertical: 4),
+                            color: ColorScheme.of(context).secondaryContainer,
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Text(
+                                _formatFingerprint(
+                                  result?.value?.additionalInfo.fingerprint,
+                                ),
+                                style: Theme.of(context).textTheme.labelLarge
+                                    ?.copyWith(
+                                      fontFamily: "GoogleSansCode",
+                                      package: "material_graphics",
+                                    ),
+                              ),
+                            ),
+                          ),
+                        if (result?.value?.mode == .error)
+                          Text(
+                            appLocalizations.transactionError(
+                              result?.value?.errorMode?.toString() ??
+                                  appLocalizations.unknown,
+                            ),
+                          ),
+                        if (result?.value?.mode == .failure)
+                          Text(
+                            appLocalizations.transactionFailureReason(
+                              result?.value?.failureMode?.toString() ??
+                                  appLocalizations.unknown,
+                            ),
+                          ),
+                        if (result?.value?.additionalInfo != null &&
+                            result?.value?.mode == .failure)
+                          Text(
+                            appLocalizations.transactionAdditionalInfo(
+                              result?.value?.additionalInfo?.toString() ??
+                                  appLocalizations.noDetails,
+                            ),
+                          ),
+                        OutlinedButton(
+                          onPressed: contactMode.value != .done
+                              ? null
+                              : protocol.stop,
+                          child: Text(appLocalizations.stopTransaction),
+                        ),
+                        OutlinedButton(
+                          onPressed:
+                              _keyPair == null ||
+                                  contactMode.value != .done ||
+                                  !permissions.areRadiosEnabled
+                              ? null
+                              : start,
+                          child: Text(appLocalizations.restartTransaction),
+                        ),
+                        Text(
+                          _formatFingerprint(_keyPair!.fingerprint),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                fontFamily: "GoogleSansCode",
+                                package: "material_graphics",
+                                fontSize: 10,
+                                color: ColorScheme.of(context).onSurfaceVariant,
+                              ),
+                        ),
+                      ]
+                    : [
+                        OutlinedButton(
+                          onPressed: _generateKeys,
+                          child: Text(appLocalizations.generateKeys),
+                        ),
+                        if (permissions.canRequestPermissions)
+                          OutlinedButton(
+                            onPressed: permissions.requestPermissions,
+                            child: Text(appLocalizations.grantPermissions),
+                          ),
+                        if (permissions.isNfcEnabled == false)
+                          OutlinedButton(
+                            onPressed: permissions.openNfcSettings,
+                            child: Text(appLocalizations.enableNfc),
+                          ),
+                        if (permissions.isBluetoothEnabled == false)
+                          OutlinedButton(
+                            onPressed: permissions.openBluetoothSettings,
+                            child: Text(appLocalizations.enableBluetooth),
+                          ),
+                        FilledButton(
+                          onPressed:
+                              _keyPair == null ||
+                                  _isGeneratingKeys ||
+                                  !permissions.areRadiosEnabled ||
+                                  !permissions.arePermissionsGranted
+                              ? null
+                              : start,
+                          child: Text(appLocalizations.startTransaction),
+                        ),
+                        if (_keyPair != null)
+                          Text(
+                            _formatFingerprint(_keyPair!.fingerprint),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  fontFamily: "GoogleSansCode",
+                                  package: "material_graphics",
+                                  fontSize: 10,
+                                  color: ColorScheme.of(context)
+                                      .onSurfaceVariant,
+                                ),
+                          ),
+                        if (permissions.isNfcAvailable == false)
+                          Text(appLocalizations.nfcNotAvailable),
+                        if (permissions.isBluetoothAvailable == false)
+                          Text(appLocalizations.bluetoothNotAvailable),
+                      ],
+              );
+            },
+          );
+
+          return TweenAnimationBuilder<ColorScheme>(
+            tween: ColorSchemeTween(
+              begin: ColorScheme.of(context),
+              end: () {
+                final color = switch (contactMode?.value) {
+                  .initializing => Colors.yellow,
+                  .tapOther => Colors.purple,
+                  .holdOther => Colors.cyan,
+                  .done =>
+                    result?.value?.mode == .success
+                        ? Colors.green
+                        : Colors.redAccent,
+                  _ => null,
+                };
+                final current = ColorScheme.of(context);
+                if (color != null) {
+                  return ColorScheme.fromSeed(
+                    seedColor: color,
+                    brightness: current.brightness,
+                  );
+                }
+                return current;
+              }(),
+            ),
+            duration: Durations.medium1,
+            curve: Curves.easeInOut,
+            builder: (_, colorScheme, _) => Theme(
+              data: Theme.of(context).copyWith(colorScheme: colorScheme),
+              child: Scaffold(
+                backgroundColor: colorScheme.surface,
+                appBar: AppBar(
+                  backgroundColor: Colors.transparent,
+                  automaticallyImplyLeading: false,
+                  title: Text(AppLocalizations.of(context).appTitle),
+                  actions: [
+                    IconButton(
+                      onPressed: () => showAboutScreen(
+                        context,
+                        referenceMaterialApps: false,
+                        githubUrl: Uri.parse(
+                          "https://github.com/PGPtouch/mobile",
+                        ),
+                        gitBakerData: {},
+                        iconUseDarkAssetFallback: true,
+                      ),
+                      icon: Icon(Icons.info_outline_rounded),
+                    ),
+                  ],
+                ),
+                extendBodyBehindAppBar: true,
+                bottomNavigationBar:
+                    ValueListenableBuilder<TapToShareGuardState>(
+                      valueListenable: NfcHceGuard.instance.state,
+                      builder: (context, guard, _) {
+                        if (!guard.shouldWarn) return const SizedBox.shrink();
+                        final appLocalizations = AppLocalizations.of(context);
+                        return SafeArea(
+                          child: ListTile(
+                            leading: const Icon(Icons.warning_amber_rounded),
+                            title: Text(
+                              appLocalizations.tapToShareInterferingTitle,
+                            ),
+                            subtitle: Text(
+                              appLocalizations.tapToShareInterferingMessage,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                body: Stack(
+                  children: [
+                    ...?protocol.nfcAntennaLocations?.map(
+                      (l) => Align(
+                        alignment: Alignment(l.x * 2 - 1, l.y * 2 - 1),
+                        child: Builder(
+                          builder: (context) => DecoratedBox(
+                            decoration: MaterialShapes.cookie6Sided
+                                .toShapeDecoration(
+                                  color: colorScheme.primaryContainer,
+                                ),
+                            child: SizedBox.square(
+                              dimension: 64,
+                              child: Center(child: Icon(Icons.nfc)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox.expand(child: body),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+typedef NfcAntennaLocations = List<({double x, double y})>;
+
+class ProtocolManagerState {
+  final DisplayState? displayState;
+  final NfcAntennaLocations? nfcAntennaLocations;
+
+  final Future<void> Function(
+    Uint8List pgpPublicKey,
+    Uint8List pgpPrivateKey, {
+    String? privateKeyPassphrase,
+  })
+  _start;
+  final Future<void> Function() _stop;
+  Future<void> start(
+    Uint8List pgpPublicKey,
+    Uint8List pgpPrivateKey, {
+    String? privateKeyPassphrase,
+  }) => _start.call(
+    pgpPublicKey,
+    pgpPrivateKey,
+    privateKeyPassphrase: privateKeyPassphrase,
+  );
+  Future<void> stop() => _stop.call();
+
+  const ProtocolManagerState({
+    required this.displayState,
+    required this.nfcAntennaLocations,
+    required this._start,
+    required this._stop,
+  });
+}
+
+class ProtocolManagerBuilder extends StatefulWidget {
+  const ProtocolManagerBuilder({super.key, required this.builder});
+
+  final Widget Function(ProtocolManagerState state) builder;
+
+  @override
+  State<ProtocolManagerBuilder> createState() => _ProtocolManagerBuilderState();
+}
+
+class _ProtocolManagerBuilderState extends State<ProtocolManagerBuilder>
+    with WidgetsBindingObserver {
   ProtocolManager? _protocolManager;
   DisplayState? _lastProtocolDisplayState;
   StreamSubscription<DisplayEvent>? _lastProtocolDisplayStateSubscription;
+  NfcAntennaLocations? _nfcAntennaLocations;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    restrictNfcDiscoveryToTypeA("App");
+    NfcHceGuard.instance.engage("App");
+    getNfcAntennaLocations().then((locations) {
+      _nfcAntennaLocations = locations;
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _lastProtocolDisplayStateSubscription?.cancel();
+    resetNfcDiscovery("App");
+    NfcHceGuard.instance.release("App");
+    NfcHaptics.instance.reset();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        restrictNfcDiscoveryToTypeA("App");
+        NfcHceGuard.instance.engage("App");
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        resetNfcDiscovery("App");
+        NfcHceGuard.instance.release("App");
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+        break;
+    }
+  }
+
+  Future<void> _stopProtocolManager() async {
+    await _protocolManager?.close();
+    _protocolManager = null;
+    _lastProtocolDisplayStateSubscription?.cancel();
+    _lastProtocolDisplayStateSubscription = null;
+    _lastProtocolDisplayState = null;
+    NfcHaptics.instance.reset();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _startProtocolManager(
+    Uint8List pgpPublicKey,
+    Uint8List pgpPrivateKey, {
+    String? privateKeyPassphrase,
+  }) async {
+    await _protocolManager?.close();
+    NfcHaptics.instance.reset();
+    final nfcSender = NfcSender();
+    _protocolManager = ProtocolManager(
+      nfcSenderState: nfcSender,
+      nfcReceiverState: NfcReceiver(nfcSender),
+      bluetoothSenderState: BluetoothSender(),
+      bluetoothReceiverState: BluetoothReceiver(),
+    );
+
+    _lastProtocolDisplayStateSubscription?.cancel();
+    _lastProtocolDisplayState = _protocolManager!.run.displayState;
+    _lastProtocolDisplayStateSubscription = _lastProtocolDisplayState!.events
+        .listen((event) {
+          log(
+            "DisplayState",
+            "contactMode=${event.contactMode.value} "
+                "deviceRole=${event.deviceRole.value} "
+                "result=${_formatDisplayResult(event.result.value)}",
+          );
+          NfcHaptics.instance.onDisplayEvent(event);
+          if (mounted) setState(() {});
+        });
+
+    try {
+      await _protocolManager!.start(
+        LocalPgpProvider(pgpPublicKey, pgpPrivateKey),
+        privateKeyPassphrase: privateKeyPassphrase,
+      );
+    } catch (e, st) {
+      log("ProtocolManager", "start failed: $e\n$st");
+      rethrow;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder.call(
+    ProtocolManagerState(
+      displayState: _lastProtocolDisplayState,
+      nfcAntennaLocations: _nfcAntennaLocations,
+      start: _startProtocolManager,
+      stop: _stopProtocolManager,
+    ),
+  );
+}
+
+class ProtocolPermissionState {
+  final List<Permission>? requiredPermissions;
+  final Map<Permission, PermissionStatus>? permissionStatuses;
+
+  final bool? isNfcAvailable;
+  final bool? isNfcEnabled;
+
+  final bool? isBluetoothAvailable;
+  final bool? isBluetoothEnabled;
+
+  final Future<void> Function() _requestPermissions;
+  final Future<void> Function() _openNfcSettings;
+  final Future<void> Function() _openBluetoothSettings;
+  Future<void> requestPermissions() => _requestPermissions.call();
+  Future<void> openNfcSettings() => _openNfcSettings.call();
+  Future<void> openBluetoothSettings() => _openBluetoothSettings.call();
+
+  const ProtocolPermissionState({
+    required this.requiredPermissions,
+    required this.permissionStatuses,
+    required this.isNfcAvailable,
+    required this.isNfcEnabled,
+    required this.isBluetoothAvailable,
+    required this.isBluetoothEnabled,
+    required this._requestPermissions,
+    required this._openNfcSettings,
+    required this._openBluetoothSettings,
+  });
+
+  bool get arePermissionsGranted =>
+      permissionStatuses != null &&
+      permissionStatuses!.values.every(
+        (status) => status == PermissionStatus.granted,
+      );
+
+  bool get canRequestPermissions =>
+      requiredPermissions != null && !arePermissionsGranted;
+
+  bool get areRadiosEnabled =>
+      isNfcEnabled == true && isBluetoothEnabled == true;
+}
+
+class ProtocolPermissionBuilder extends StatefulWidget {
+  const ProtocolPermissionBuilder({super.key, required this.builder});
+
+  final Widget Function(ProtocolPermissionState state) builder;
+
+  @override
+  State<ProtocolPermissionBuilder> createState() =>
+      _ProtocolPermissionBuilderState();
+}
+
+class _ProtocolPermissionBuilderState extends State<ProtocolPermissionBuilder>
+    with WidgetsBindingObserver {
   List<Permission>? _requiredPermissions;
   Map<Permission, PermissionStatus>? _permissionStatuses;
-  List<({double x, double y})>? _nfcAntennaLocations;
 
   bool? _isNfcAvailable;
   bool? _isNfcEnabled;
@@ -48,12 +557,6 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    restrictNfcDiscoveryToTypeA("App");
-    NfcHceGuard.instance.engage("App");
-    getNfcAntennaLocations().then((locations) {
-      _nfcAntennaLocations = locations;
-      if (mounted) setState(() {});
-    });
     DeviceInfoPlugin().androidInfo.then((info) async {
       _requiredPermissions = info.version.sdkInt >= 31
           ? [
@@ -79,6 +582,22 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
     );
     _checkNfcAvailability();
     _checkBluetoothAvailability();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _nfcAdapterSubscription?.cancel();
+    _bluetoothStateSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkNfcAvailability();
+      _checkBluetoothAvailability();
+    }
   }
 
   Future<void> _checkNfcAvailability() async {
@@ -128,317 +647,61 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
     }
   }
 
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _nfcAdapterSubscription?.cancel();
-    _bluetoothStateSubscription?.cancel();
-    resetNfcDiscovery("App");
-    NfcHceGuard.instance.release("App");
-    NfcHaptics.instance.reset();
-    super.dispose();
+  Future<void> _requestPermissions() async {
+    _permissionStatuses = await _requiredPermissions!.request();
+    if (_permissionStatuses!.values.any(
+      (status) => status == PermissionStatus.permanentlyDenied,
+    )) {
+      await openAppSettings();
+    }
+    if (mounted) setState(() {});
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    // `inactive`/`hidden` are transient (a system dialog, the app switcher, a
-    // brief window-focus change): the app is still visible or about to be
-    // again, which is exactly when a tap can happen, so they are left alone.
-    // Only `paused`/`detached` mean the app has really left the foreground.
-    // The Tap to share claim is re-taken on every resume and given back here
-    // (MainActivity.onPause also drops it natively, which does not depend on
-    // this callback getting to run before the process is frozen).
-    switch (state) {
-      case AppLifecycleState.resumed:
-        restrictNfcDiscoveryToTypeA("App");
-        NfcHceGuard.instance.engage("App");
-        _checkNfcAvailability();
-        _checkBluetoothAvailability();
-      case AppLifecycleState.paused:
-      case AppLifecycleState.detached:
-        resetNfcDiscovery("App");
-        NfcHceGuard.instance.release("App");
-      case AppLifecycleState.inactive:
-      case AppLifecycleState.hidden:
-        break;
+  Future<void> _openNfcSettings() async {
+    switch (OpenSettingsPlus.shared) {
+      case OpenSettingsPlusAndroid settings:
+        final ok = await settings.sendAndroidIntent(
+          "android.settings.panel.action.NFC",
+        );
+        if (!ok) await settings.nfc();
+      default:
+        throw Exception("Platform not supported");
     }
   }
 
-  Future<void> startProtocolManager(
-    Uint8List pgpPublicKey,
-    Uint8List pgpPrivateKey, {
-    String? privateKeyPassphrase,
-  }) async {
-    await _protocolManager?.close();
-    NfcHaptics.instance.reset();
-    final nfcSender = NfcSender();
-    _protocolManager = ProtocolManager(
-      nfcSenderState: nfcSender,
-      nfcReceiverState: NfcReceiver(nfcSender),
-      bluetoothSenderState: BluetoothSender(),
-      bluetoothReceiverState: BluetoothReceiver(),
-    );
-
-    _lastProtocolDisplayStateSubscription?.cancel();
-    _lastProtocolDisplayState = _protocolManager!.run.displayState;
-    _lastProtocolDisplayStateSubscription = _lastProtocolDisplayState!.events
-        .listen((event) {
-          log(
-            "DisplayState",
-            "contactMode=${event.contactMode.value} "
-                "deviceRole=${event.deviceRole.value} "
-                "result=${_formatDisplayResult(event.result.value)}",
-          );
-          NfcHaptics.instance.onDisplayEvent(event);
-          if (mounted) setState(() {});
-        });
-
-    try {
-      await _protocolManager!.start(
-        pgpPublicKey,
-        pgpPrivateKey,
-        privateKeyPassphrase: privateKeyPassphrase,
-      );
-    } catch (e, st) {
-      log("ProtocolManager", "start failed: $e\n$st");
-      rethrow;
+  Future<void> _openBluetoothSettings() async {
+    switch (OpenSettingsPlus.shared) {
+      case OpenSettingsPlusAndroid settings:
+        final ok = await settings.sendAndroidIntent(
+          "android.bluetooth.adapter.action.REQUEST_ENABLE",
+        );
+        if (!ok) await settings.bluetooth();
+      default:
+        throw Exception("Platform not supported");
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final displayState = _lastProtocolDisplayState?.lastEvent;
-    final contactMode = displayState?.contactMode;
-    final deviceRole = displayState?.deviceRole;
-    final result = displayState?.result;
+  Widget build(BuildContext context) => widget.builder.call(
+    ProtocolPermissionState(
+      requiredPermissions: _requiredPermissions,
+      permissionStatuses: _permissionStatuses,
+      isNfcAvailable: _isNfcAvailable,
+      isNfcEnabled: _isNfcEnabled,
+      isBluetoothAvailable: _isBluetoothAvailable,
+      isBluetoothEnabled: _isBluetoothEnabled,
+      requestPermissions: _requestPermissions,
+      openNfcSettings: _openNfcSettings,
+      openBluetoothSettings: _openBluetoothSettings,
+    ),
+  );
+}
 
-    Future<void> start() async {
-      if (_keyPair == null) return;
-      await startProtocolManager(
-        Uint8List.fromList(_keyPair!.publicKey.packetList.encode()),
-        Uint8List.fromList(_keyPair!.packetList.encode()),
-        privateKeyPassphrase: "passphrase",
-      );
-    }
+class ColorSchemeTween extends Tween<ColorScheme> {
+  ColorSchemeTween({required super.begin, required super.end});
 
-    final body = Builder(
-      builder: (context) => Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.max,
-        children: contactMode != null
-            ? [
-                Text(switch (contactMode.value) {
-                  .initializing => "Initializing...",
-                  .tapOther => "Tap other",
-                  .holdOther => "Hold...",
-                  .done =>
-                    result?.value?.mode == .success ? "Success!" : "Failure",
-                }, style: Theme.of(context).textTheme.headlineLarge),
-                Text("Device Role: ${deviceRole?.value?.name ?? "Unknown"}"),
-                Text("Result: ${result?.value?.mode ?? "Unknown"}"),
-                if (result?.value?.additionalInfo != null &&
-                    result?.value?.mode == .success)
-                  Card.outlined(
-                    margin: EdgeInsets.symmetric(vertical: 4),
-                    color: Color.alphaBlend(
-                      Colors.green.withValues(alpha: 0.075),
-                      Colors.white,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Text(
-                        _formatFingerprint(
-                          result?.value?.additionalInfo.fingerprint,
-                        ),
-                        style: Theme.of(context).textTheme.labelLarge
-                            ?.copyWith(fontFamily: "monospace"),
-                      ),
-                    ),
-                  ),
-                if (result?.value?.mode == .error)
-                  Text("Error: ${result?.value?.errorMode ?? "Unknown"}"),
-                if (result?.value?.mode == .failure)
-                  Text("Failure: ${result?.value?.failureMode ?? "Unknown"}"),
-                if (result?.value?.additionalInfo != null &&
-                    result?.value?.mode == .failure)
-                  Text("(${result?.value?.additionalInfo ?? "No details"})"),
-                OutlinedButton(
-                  onPressed:
-                      _keyPair == null ||
-                          contactMode.value != .done ||
-                          _isNfcEnabled != true ||
-                          _isBluetoothEnabled != true
-                      ? null
-                      : start,
-                  child: Text("Restart transaction"),
-                ),
-                Text(
-                  _formatFingerprint(_keyPair!.fingerprint),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontFamily: "monospace",
-                    fontSize: 10,
-                    color: Colors.blueGrey,
-                  ),
-                ),
-              ]
-            : [
-                OutlinedButton(
-                  onPressed: () async {
-                    if (_isGeneratingKeys) return;
-                    _isGeneratingKeys = true;
-                    if (mounted) setState(() {});
-
-                    _keyPair = await compute(
-                      (_) => OpenPGP.generateKey(
-                        ["Device <device@example.com>"],
-                        "passphrase",
-                        type: KeyType.rsa,
-                      ) as PrivateKey,
-                      null,
-                    );
-                    _isGeneratingKeys = false;
-                    if (mounted) setState(() {});
-                  },
-                  child: Text("Generate keys"),
-                ),
-                OutlinedButton(
-                  onPressed:
-                      _requiredPermissions == null ||
-                          (_permissionStatuses != null &&
-                              _permissionStatuses!.values.every(
-                                (status) => status == PermissionStatus.granted,
-                              ))
-                      ? null
-                      : () async {
-                          _permissionStatuses = await _requiredPermissions!
-                              .request();
-                          if (_permissionStatuses!.values.any(
-                            (status) =>
-                                status == PermissionStatus.permanentlyDenied,
-                          )) {
-                            await openAppSettings();
-                          }
-                          if (mounted) setState(() {});
-                        },
-                  child: Text("Grant permissions"),
-                ),
-                if (_isNfcEnabled == false)
-                  OutlinedButton(
-                    onPressed: () async => switch (OpenSettingsPlus.shared) {
-                      OpenSettingsPlusAndroid settings =>
-                        settings
-                            .sendAndroidIntent(
-                              "android.settings.panel.action.NFC",
-                            )
-                            .then((ok) => ok ? true : settings.nfc()),
-                      _ => throw Exception("Platform not supported"),
-                    },
-                    child: Text("Enable NFC"),
-                  ),
-                if (_isBluetoothEnabled == false)
-                  OutlinedButton(
-                    onPressed: () async => switch (OpenSettingsPlus.shared) {
-                      OpenSettingsPlusAndroid settings =>
-                        settings
-                            .sendAndroidIntent(
-                              "android.bluetooth.adapter.action.REQUEST_ENABLE",
-                            )
-                            .then((ok) => ok ? true : settings.bluetooth()),
-                      _ => throw Exception("Platform not supported"),
-                    },
-                    child: Text("Enable Bluetooth"),
-                  ),
-                FilledButton(
-                  onPressed:
-                      _keyPair == null ||
-                          _isGeneratingKeys ||
-                          _isNfcEnabled != true ||
-                          _isBluetoothEnabled != true ||
-                          _permissionStatuses == null ||
-                          _permissionStatuses!.values.any(
-                            (status) => status != PermissionStatus.granted,
-                          )
-                      ? null
-                      : start,
-                  child: Text("Start transaction"),
-                ),
-                if (_keyPair != null)
-                  Text(
-                    _formatFingerprint(_keyPair!.fingerprint),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontFamily: "monospace",
-                      fontSize: 10,
-                      color: Colors.blueGrey,
-                    ),
-                  ),
-                if (_isNfcAvailable == false)
-                  Text("NFC is not available on this device."),
-                if (_isBluetoothAvailable == false)
-                  Text("Bluetooth is not available on this device."),
-              ],
-      ),
-    );
-    return MaterialApp(
-      home: Scaffold(
-        backgroundColor: Colors.white,
-        bottomNavigationBar: ValueListenableBuilder<TapToShareGuardState>(
-          valueListenable: NfcHceGuard.instance.state,
-          builder: (context, guard, _) => guard.shouldWarn
-              ? SafeArea(
-                  child: Material(
-                    color: Colors.amber.shade100,
-                    child: ListTile(
-                      leading: const Icon(Icons.warning_amber_rounded),
-                      title: const Text("Tap to share is interfering"),
-                      subtitle: Text(
-                        "Android's Tap to share could not be blocked. Turn it "
-                        "off in Settings > Google > Quick Share > Tap to "
-                        "share, or taps may open the contact-share popup.",
-                      ),
-                    ),
-                  ),
-                )
-              : const SizedBox.shrink(),
-        ),
-        body: AnimatedContainer(
-          duration: Durations.medium1,
-          curve: Curves.easeInOut,
-          color: switch (contactMode?.value) {
-            .initializing => Colors.yellow,
-            .tapOther => Colors.purple,
-            .holdOther => Colors.teal,
-            .done =>
-              result?.value?.mode == .success ? Colors.green : Colors.redAccent,
-            _ => Colors.grey,
-          }.withValues(alpha: 0.2),
-          width: double.infinity,
-          child: Stack(
-            children: [
-              ...?_nfcAntennaLocations?.map(
-                (l) => Align(
-                  alignment: Alignment(l.x * 2 - 1, l.y * 2 - 1),
-                  child: Builder(
-                    builder: (context) => DecoratedBox(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: ColorScheme.of(context).primary
-                            .withValues(alpha: 1 / 3),
-                      ),
-                      child: SizedBox.square(
-                        dimension: 64,
-                        child: Center(child: Icon(Icons.nfc)),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox.expand(child: body),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  @override
+  ColorScheme lerp(double t) => ColorScheme.lerp(begin!, end!, t);
 }
 
 String _formatDisplayResult(DisplayResult? result) {
