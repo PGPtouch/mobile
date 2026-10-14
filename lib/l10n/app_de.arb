@@ -23,5 +23,8 @@
     "nfcNotAvailable": "NFC ist auf diesem Gerät nicht verfügbar.",
     "bluetoothNotAvailable": "Bluetooth ist auf diesem Gerät nicht verfügbar.",
     "tapToShareInterferingTitle": "„Tap to share“ stört",
-    "tapToShareInterferingMessage": "Androids „Tap to share“ konnte nicht blockiert werden. Deaktiviere es unter Einstellungen > Google > Quick Share > Tap to share, da Antippen sonst das Popup zum Teilen von Kontakten öffnen kann."
+    "tapToShareInterferingMessage": "Androids „Tap to share“ konnte nicht blockiert werden. Deaktiviere es unter Einstellungen > Google > Quick Share > Tap to share, da Antippen sonst das Popup zum Teilen von Kontakten öffnen kann.",
+    "navContacts": "Kontakte",
+    "navStartRun": "Durchlauf starten",
+    "navIdentities": "Identitäten"
 }

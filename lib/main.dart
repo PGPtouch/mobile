@@ -6,10 +6,8 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:material_helper/material_helper.dart';
 import 'package:material_graphics/material_graphics.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_localizations/flutter_localizations.dart'
-    show GlobalWidgetsLocalizations;
+import 'package:mobile/generated/gitbaker.g.dart';
 import 'package:mobile/l10n/app_localizations.dart';
 import 'package:nfc_util/android.dart' as nfc_android;
 import 'package:nfc_util/nfc_util.dart';
@@ -32,9 +30,6 @@ class MainApp extends StatelessWidget {
     title: null,
     onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
     home: MainScreen(),
-    // The generated AppLocalizations.localizationsDelegates use the Material and
-    // Cupertino delegates of the Flutter SDK, which don't match the types used
-    // by material_ui / cupertino_ui.
     localizationsDelegates: [
       MaterialHelperLocalizations.delegate,
       AppLocalizations.delegate,
@@ -52,9 +47,27 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends State<MainScreen>
+    with SingleTickerProviderStateMixin {
+  late final PageController _pageController;
+  int _pendingPageAnimations = 0;
+  int _currentPage = 1;
+
+  bool _navigationBlocked = false;
+  late final AnimationController _navigationBlockingController;
+
   bool _isGeneratingKeys = false;
   PrivateKey? _keyPair;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: 1);
+    _navigationBlockingController = AnimationController(
+      vsync: this,
+      duration: ExpressiveCurves.expressiveEffects.slowDuration,
+    );
+  }
 
   Future<void> _generateKeys() async {
     if (_isGeneratingKeys) return;
@@ -79,6 +92,21 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return ProtocolPermissionBuilder(
       builder: (permissions) => ProtocolManagerBuilder(
+        onStart: () {
+          _navigationBlocked = true;
+          if (mounted) setState(() {});
+          _navigationBlockingController.forward();
+          _pageController.animateToPage(
+            1,
+            duration: ExpressiveCurves.expressiveSpatial.normalDuration,
+            curve: ExpressiveCurves.expressiveSpatial.normal,
+          );
+        },
+        onDone: () {
+          _navigationBlocked = false;
+          if (mounted) setState(() {});
+          _navigationBlockingController.reverse();
+        },
         builder: (protocol) {
           final displayState = protocol.displayState?.lastEvent;
           final contactMode = displayState?.contactMode;
@@ -94,7 +122,8 @@ class _MainScreenState extends State<MainScreen> {
             );
           }
 
-          final body = Builder(
+          final contactsBody = Center(child: Text("Contacts Body"));
+          final runBody = Builder(
             builder: (context) {
               final appLocalizations = AppLocalizations.of(context);
               return Column(
@@ -165,9 +194,7 @@ class _MainScreenState extends State<MainScreen> {
                             ),
                           ),
                         OutlinedButton(
-                          onPressed: contactMode.value != .done
-                              ? null
-                              : protocol.stop,
+                          onPressed: protocol.stop,
                           child: Text(appLocalizations.stopTransaction),
                         ),
                         OutlinedButton(
@@ -240,6 +267,7 @@ class _MainScreenState extends State<MainScreen> {
               );
             },
           );
+          final identitiesBody = Center(child: Text("Identities Body"));
 
           return TweenAnimationBuilder<ColorScheme>(
             tween: ColorSchemeTween(
@@ -267,72 +295,190 @@ class _MainScreenState extends State<MainScreen> {
             ),
             duration: Durations.medium1,
             curve: Curves.easeInOut,
-            builder: (_, colorScheme, _) => Theme(
-              data: Theme.of(context).copyWith(colorScheme: colorScheme),
-              child: Scaffold(
-                backgroundColor: colorScheme.surface,
-                appBar: AppBar(
-                  backgroundColor: Colors.transparent,
-                  automaticallyImplyLeading: false,
-                  title: Text(AppLocalizations.of(context).appTitle),
-                  actions: [
-                    IconButton(
-                      onPressed: () => showAboutScreen(
-                        context,
-                        referenceMaterialApps: false,
-                        githubUrl: Uri.parse(
-                          "https://github.com/PGPtouch/mobile",
-                        ),
-                        gitBakerData: {},
-                        iconUseDarkAssetFallback: true,
-                      ),
-                      icon: Icon(Icons.info_outline_rounded),
-                    ),
-                  ],
-                ),
-                extendBodyBehindAppBar: true,
-                bottomNavigationBar:
-                    ValueListenableBuilder<TapToShareGuardState>(
-                      valueListenable: NfcHceGuard.instance.state,
-                      builder: (context, guard, _) {
-                        if (!guard.shouldWarn) return const SizedBox.shrink();
-                        final appLocalizations = AppLocalizations.of(context);
-                        return SafeArea(
-                          child: ListTile(
-                            leading: const Icon(Icons.warning_amber_rounded),
-                            title: Text(
-                              appLocalizations.tapToShareInterferingTitle,
-                            ),
-                            subtitle: Text(
-                              appLocalizations.tapToShareInterferingMessage,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                body: Stack(
-                  children: [
-                    ...?protocol.nfcAntennaLocations?.map(
-                      (l) => Align(
-                        alignment: Alignment(l.x * 2 - 1, l.y * 2 - 1),
-                        child: Builder(
-                          builder: (context) => DecoratedBox(
-                            decoration: MaterialShapes.cookie6Sided
-                                .toShapeDecoration(
-                                  color: colorScheme.primaryContainer,
-                                ),
-                            child: SizedBox.square(
-                              dimension: 64,
-                              child: Center(child: Icon(Icons.nfc)),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox.expand(child: body),
-                  ],
-                ),
+            builder: (_, colorScheme, _) => TweenAnimationBuilder<Color?>(
+              tween: ColorTween(
+                begin: colorScheme.surface,
+                end: _currentPage == 1
+                    ? colorScheme.surface
+                    : ColorScheme.of(context).surface,
               ),
+              duration: Durations.medium1,
+              curve: Curves.easeInOut,
+              builder: (_, backgroundColor, _) {
+                return Scaffold(
+                  backgroundColor: backgroundColor,
+                  appBar: AppBar(
+                    forceMaterialTransparency: true,
+                    automaticallyImplyLeading: false,
+                    title: AnimatedSwitcher(
+                      duration:
+                          ExpressiveCurves.expressiveSpatial.normalDuration,
+                      switchInCurve: ExpressiveCurves.expressiveSpatial.normal,
+                      switchOutCurve:
+                          ExpressiveCurves.expressiveSpatial.normal.flipped,
+                      layoutBuilder: (currentChild, previousChildren) =>
+                          SizedBox(
+                            width: double.infinity,
+                            child: Stack(
+                              alignment: AlignmentDirectional.centerStart,
+                              children: [...previousChildren, ?currentChild],
+                            ),
+                          ),
+                      transitionBuilder: (child, animation) =>
+                          _TitleSlideTransition(
+                            animation: animation,
+                            curve: ExpressiveCurves.expressiveSpatial.normal,
+                            child: child,
+                          ),
+                      child: Text(
+                        key: ValueKey(_currentPage),
+                        switch (_currentPage) {
+                          0 => AppLocalizations.of(context).navContacts,
+                          2 => AppLocalizations.of(context).navIdentities,
+                          _ => AppLocalizations.of(context).appTitle,
+                        },
+                      ),
+                    ),
+                    actions: [
+                      IconButton(
+                        onPressed: () => showAboutScreen(
+                          context,
+                          referenceMaterialApps: false,
+                          githubUrl: Uri.parse(
+                            "https://github.com/PGPtouch/mobile",
+                          ),
+                          gitBakerData: GitBaker.toJson(),
+                          iconUseDarkAssetFallback: true,
+                        ),
+                        icon: Icon(Icons.live_help_outlined),
+                      ),
+                    ],
+                  ),
+                  // extendBodyBehindAppBar: true,
+                  // bottomNavigationBar:
+                  //     ValueListenableBuilder<TapToShareGuardState>(
+                  //       valueListenable: NfcHceGuard.instance.state,
+                  //       builder: (context, guard, _) {
+                  //         if (!guard.shouldWarn) return const SizedBox.shrink();
+                  //         final appLocalizations = AppLocalizations.of(context);
+                  //         return SafeArea(
+                  //           child: ListTile(
+                  //             leading: const Icon(Icons.warning_amber_rounded),
+                  //             title: Text(
+                  //               appLocalizations.tapToShareInterferingTitle,
+                  //             ),
+                  //             subtitle: Text(
+                  //               appLocalizations.tapToShareInterferingMessage,
+                  //             ),
+                  //           ),
+                  //         );
+                  //       },
+                  //     ),
+                  bottomNavigationBar: SlideTransition(
+                    position:
+                        Tween<Offset>(
+                          begin: Offset(0, 0),
+                          end: Offset(0, 1),
+                        ).animate(
+                          CurvedAnimation(
+                            parent: _navigationBlockingController,
+                            curve: ExpressiveCurves.expressiveEffects.slow,
+                            reverseCurve:
+                                ExpressiveCurves.expressiveEffects.slow.flipped,
+                          ),
+                        ),
+                    child: NavigationBar(
+                      height: 64,
+                      labelBehavior: .alwaysHide,
+                      selectedIndex: _currentPage,
+                      onDestinationSelected: (value) {
+                        if (_navigationBlocked || value == _currentPage) return;
+                        _currentPage = value;
+                        if (mounted) setState(() {});
+                        _pendingPageAnimations++;
+                        _pageController
+                            .animateToPage(
+                              value,
+                              duration: ExpressiveCurves
+                                  .expressiveSpatial
+                                  .normalDuration,
+                              curve: ExpressiveCurves.expressiveSpatial.normal,
+                            )
+                            .whenComplete(() {
+                              _pendingPageAnimations--;
+                            });
+                      },
+                      destinations: [
+                        NavigationDestination(
+                          icon: Icon(Icons.groups_2_outlined),
+                          selectedIcon: Icon(Icons.groups_2),
+                          label: AppLocalizations.of(context).navContacts,
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.rocket_launch_outlined),
+                          selectedIcon: Icon(Icons.rocket_launch),
+                          label: AppLocalizations.of(context).navStartRun,
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.badge_outlined),
+                          selectedIcon: Icon(Icons.badge),
+                          label: AppLocalizations.of(context).navIdentities,
+                        ),
+                      ],
+                    ),
+                  ),
+                  body: PageView(
+                    controller: _pageController,
+                    onPageChanged: (value) {
+                      if (_pendingPageAnimations > 0) return;
+                      _currentPage = value;
+                      if (mounted) setState(() {});
+                    },
+                    physics: _navigationBlocked
+                        ? NeverScrollableScrollPhysics()
+                        : null,
+                    children: [
+                      contactsBody,
+                      Theme(
+                        data: Theme.of(context)
+                            .copyWith(colorScheme: colorScheme),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) => Stack(
+                            children: [
+                              ...?protocol.nfcAntennaLocations?.map(
+                                (l) => Align(
+                                  alignment: Alignment(
+                                    l.x * 2 - 1,
+                                    l.y * 2 - 1,
+                                  ),
+                                  child: DecoratedBox(
+                                    decoration: MaterialShapes.cookie6Sided
+                                        .toShapeDecoration(
+                                          color: colorScheme.secondaryContainer,
+                                        ),
+                                    child: SizedBox.square(
+                                      dimension: 64,
+                                      child: Center(
+                                        child: Icon(
+                                          Icons.nfc,
+                                          color:
+                                              colorScheme.onSecondaryContainer,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox.expand(child: runBody),
+                            ],
+                          ),
+                        ),
+                      ),
+                      identitiesBody,
+                    ],
+                  ),
+                );
+              },
             ),
           );
         },
@@ -374,7 +520,15 @@ class ProtocolManagerState {
 }
 
 class ProtocolManagerBuilder extends StatefulWidget {
-  const ProtocolManagerBuilder({super.key, required this.builder});
+  final VoidCallback? onStart;
+  final VoidCallback? onDone;
+
+  const ProtocolManagerBuilder({
+    super.key,
+    required this.builder,
+    this.onStart,
+    this.onDone,
+  });
 
   final Widget Function(ProtocolManagerState state) builder;
 
@@ -435,6 +589,7 @@ class _ProtocolManagerBuilderState extends State<ProtocolManagerBuilder>
     _lastProtocolDisplayState = null;
     NfcHaptics.instance.reset();
     if (mounted) setState(() {});
+    widget.onDone?.call();
   }
 
   Future<void> _startProtocolManager(
@@ -464,9 +619,11 @@ class _ProtocolManagerBuilderState extends State<ProtocolManagerBuilder>
           );
           NfcHaptics.instance.onDisplayEvent(event);
           if (mounted) setState(() {});
+          if (event.contactMode.value == .done) widget.onDone?.call();
         });
 
     try {
+      widget.onStart?.call();
       await _protocolManager!.start(
         LocalPgpProvider(pgpPublicKey, pgpPrivateKey),
         privateKeyPassphrase: privateKeyPassphrase,
@@ -702,6 +859,64 @@ class ColorSchemeTween extends Tween<ColorScheme> {
 
   @override
   ColorScheme lerp(double t) => ColorScheme.lerp(begin!, end!, t);
+}
+
+class _TitleSlideTransition extends StatefulWidget {
+  const _TitleSlideTransition({
+    required this.animation,
+    required this.curve,
+    required this.child,
+  });
+
+  final Animation<double> animation;
+  final Curve curve;
+  final Widget child;
+
+  @override
+  State<_TitleSlideTransition> createState() => _TitleSlideTransitionState();
+}
+
+class _TitleSlideTransitionState extends State<_TitleSlideTransition> {
+  double? _exitStartTime;
+  double _exitStartProgress = 1;
+
+  Animation<double> get _clock {
+    final animation = widget.animation;
+    return animation is CurvedAnimation ? animation.parent : animation;
+  }
+
+  (double, double) _frame() {
+    final time = _clock.value;
+    if (widget.animation.status != AnimationStatus.reverse) {
+      _exitStartTime = null;
+      final progress = widget.curve.transform(time);
+      return (-(1 - progress), progress);
+    }
+    if (_exitStartTime == null) {
+      _exitStartTime = time.clamp(0.001, 1.0);
+      _exitStartProgress = widget.curve.transform(_exitStartTime!);
+    }
+    final startTime = _exitStartTime!;
+    final exit = widget.curve.transform((1 - time / startTime).clamp(0.0, 1.0));
+    final startOffset = -(1 - _exitStartProgress);
+    return (
+      startOffset + (1 - startOffset) * exit,
+      _exitStartProgress * (1 - exit),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: widget.animation,
+    child: widget.child,
+    builder: (context, child) {
+      final (offset, opacity) = _frame();
+      return FractionalTranslation(
+        translation: Offset(0, offset),
+        child: Opacity(opacity: opacity.clamp(0.0, 1.0), child: child),
+      );
+    },
+  );
 }
 
 String _formatDisplayResult(DisplayResult? result) {

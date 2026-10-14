@@ -92,4 +92,13 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get tapToShareInterferingMessage =>
       'Androids „Tap to share“ konnte nicht blockiert werden. Deaktiviere es unter Einstellungen > Google > Quick Share > Tap to share, da Antippen sonst das Popup zum Teilen von Kontakten öffnen kann.';
+
+  @override
+  String get navContacts => 'Kontakte';
+
+  @override
+  String get navStartRun => 'Durchlauf starten';
+
+  @override
+  String get navIdentities => 'Identitäten';
 }

@@ -92,4 +92,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get tapToShareInterferingMessage =>
       'Android\'s Tap to share could not be blocked. Turn it off in Settings > Google > Quick Share > Tap to share, or taps may open the contact-share popup.';
+
+  @override
+  String get navContacts => 'Contacts';
+
+  @override
+  String get navStartRun => 'Start run';
+
+  @override
+  String get navIdentities => 'Identities';
 }

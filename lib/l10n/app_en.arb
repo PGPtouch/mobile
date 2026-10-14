@@ -144,5 +144,20 @@
     "@tapToShareInterferingMessage": {
         "description": "Explanation and instructions for the warning shown when Android's Tap to share could not be blocked",
         "context": "Main screen, bottom warning banner"
+    },
+    "navContacts": "Contacts",
+    "@navContacts": {
+        "description": "Label of the navigation bar destination for the contacts list",
+        "context": "Main screen, bottom navigation bar"
+    },
+    "navStartRun": "Start run",
+    "@navStartRun": {
+        "description": "Label of the navigation bar destination for starting a run",
+        "context": "Main screen, bottom navigation bar"
+    },
+    "navIdentities": "Identities",
+    "@navIdentities": {
+        "description": "Label of the navigation bar destination for the user's identities",
+        "context": "Main screen, bottom navigation bar"
     }
 }

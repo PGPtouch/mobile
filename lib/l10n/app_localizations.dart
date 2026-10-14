@@ -241,6 +241,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Android\'s Tap to share could not be blocked. Turn it off in Settings > Google > Quick Share > Tap to share, or taps may open the contact-share popup.'**
   String get tapToShareInterferingMessage;
+
+  /// Label of the navigation bar destination for the contacts list
+  ///
+  /// In en, this message translates to:
+  /// **'Contacts'**
+  String get navContacts;
+
+  /// Label of the navigation bar destination for starting a run
+  ///
+  /// In en, this message translates to:
+  /// **'Start run'**
+  String get navStartRun;
+
+  /// Label of the navigation bar destination for the user's identities
+  ///
+  /// In en, this message translates to:
+  /// **'Identities'**
+  String get navIdentities;
 }
 
 class _AppLocalizationsDelegate

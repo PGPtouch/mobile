@@ -235,6 +235,7 @@ final class HapticPattern {
 
 /// Haptics for the tap flow, driven by the protocol's [DisplayEvent]s:
 ///
+///  * tap other: a slight double tap once initializing is over;
 ///  * hold other: a very light, repeating swell and fade until done;
 ///  * done: a success or a failure pattern.
 ///
@@ -346,6 +347,20 @@ final class NfcHaptics with WidgetsBindingObserver {
     ],
   );
 
+  /// A slight double tap: two short, light pulses 70 ms apart, played when
+  /// the device is ready to be tapped.
+  static const _ready = HapticPattern(
+    envelope: [
+      (durationMs: 4, amplitude: 0.25, frequencyHz: 120),
+      (durationMs: 4, amplitude: 0, frequencyHz: 120),
+      (durationMs: 70, amplitude: 0, frequencyHz: 120),
+      (durationMs: 4, amplitude: 0.25, frequencyHz: 120),
+      (durationMs: 4, amplitude: 0, frequencyHz: 120),
+    ],
+    timings: [8, 70, 8],
+    amplitudes: [64, 0, 64],
+  );
+
   DisplayContactMode? _mode;
   bool _foreground = true;
   bool _observing = false;
@@ -358,7 +373,8 @@ final class NfcHaptics with WidgetsBindingObserver {
 
   void onDisplayEvent(DisplayEvent event) {
     final mode = event.contactMode.value;
-    if (mode == _mode) return;
+    final previous = _mode;
+    if (mode == previous) return;
     _mode = mode;
     _observe();
     switch (mode) {
@@ -368,6 +384,9 @@ final class NfcHaptics with WidgetsBindingObserver {
       case DisplayContactMode.tapOther:
         _invalidate();
         _serialized(_cancel);
+        if (previous == DisplayContactMode.initializing) {
+          _whenIdle(_epoch, () => _oneShot(_ready));
+        }
       case DisplayContactMode.holdOther:
         _whenIdle(_epoch, _startSwell);
       case DisplayContactMode.done:
