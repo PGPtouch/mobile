@@ -140,7 +140,7 @@
         "description": "Title of the warning shown when Android's Tap to share could not be blocked",
         "context": "Main screen, bottom warning banner"
     },
-    "tapToShareInterferingMessage": "Android's Tap to share could not be blocked. Turn it off in Settings > Google > Quick Share > Tap to share, or taps may open the contact-share popup.",
+    "tapToShareInterferingMessage": "Android’s Tap to share could not be blocked. Turn it off in Settings > Google > Quick Share > Tap to share, or taps may open the contact-share popup.",
     "@tapToShareInterferingMessage": {
         "description": "Explanation and instructions for the warning shown when Android's Tap to share could not be blocked",
         "context": "Main screen, bottom warning banner"
@@ -159,5 +159,330 @@
     "@navIdentities": {
         "description": "Label of the navigation bar destination for the user's identities",
         "context": "Main screen, bottom navigation bar"
+    },
+    "vaultUnlockTitle": "Unlock vault",
+    "@vaultUnlockTitle": {
+        "description": "Title of the Android biometric prompt used to unlock the personal vault",
+        "context": "Biometric prompt, vault unlock"
+    },
+    "vaultUnlockSubtitle": "Verify your identity to unlock your personal vault and start using PGPtouch.",
+    "@vaultUnlockSubtitle": {
+        "description": "Subtitle of the Android biometric prompt explaining why the vault must be unlocked",
+        "context": "Biometric prompt, vault unlock"
+    },
+    "vaultUnlockKeepLocked": "Keep locked",
+    "@vaultUnlockKeepLocked": {
+        "description": "Negative button label of the biometric prompt that cancels unlocking the vault",
+        "context": "Biometric prompt, vault unlock"
+    },
+    "vaultUnlockDeviceReauthRequiredTitle": "Device reauthentication required",
+    "@vaultUnlockDeviceReauthRequiredTitle": {
+        "description": "Title of the message shown when unlocking the vault failed because the Android Keystore reports the key as locked until the device is locked and unlocked again",
+        "context": "Snackbar, vault unlock"
+    },
+    "vaultUnlockDeviceReauthRequiredMessage": "Android couldn’t access the vault’s secure key. This may happen if the device needs to be reauthenticated.",
+    "@vaultUnlockDeviceReauthRequiredMessage": {
+        "description": "Message shown when unlocking the vault failed because the Android Keystore reports the key as locked until the device is locked and unlocked again",
+        "context": "Snackbar, vault unlock"
+    },
+    "vaultUnlockDeviceReauthRequiredStep1": "Lock your phone",
+    "@vaultUnlockDeviceReauthRequiredStep1": {
+        "description": "First step instruction for reauthenticating the device when the vault's secure key is inaccessible",
+        "context": "Snackbar, vault unlock"
+    },
+    "vaultUnlockDeviceReauthRequiredStep2": "Unlock your phone",
+    "@vaultUnlockDeviceReauthRequiredStep2": {
+        "description": "Second step instruction for reauthenticating the device when the vault's secure key is inaccessible",
+        "context": "Snackbar, vault unlock"
+    },
+    "vaultUnlockDeviceReauthRequiredStep3": "Try again",
+    "@vaultUnlockDeviceReauthRequiredStep3": {
+        "description": "Third step instruction for reauthenticating the device when the vault's secure key is inaccessible",
+        "context": "Snackbar, vault unlock"
+    },
+    "addContactSourceSearch": "Search online",
+    "@addContactSourceSearch": {
+        "description": "Option in the add contact source chooser to search for a contact online",
+        "context": "Add contact flow, source chooser bottom sheet"
+    },
+    "addContactSourceClipboard": "Paste from clipboard",
+    "@addContactSourceClipboard": {
+        "description": "Option in the add contact source chooser to import a contact from the clipboard",
+        "context": "Add contact flow, source chooser bottom sheet"
+    },
+    "addContactSourceFile": "Import from file",
+    "@addContactSourceFile": {
+        "description": "Option in the add contact source chooser to import a contact from a file",
+        "context": "Add contact flow, source chooser bottom sheet"
+    },
+    "addIdentitySourceCreate": "Create new",
+    "@addIdentitySourceCreate": {
+        "description": "Option in the add identity source chooser to create a new identity (key pair) from scratch",
+        "context": "Add identity flow, source chooser bottom sheet"
+    },
+    "passphraseInputWrong": "Wrong passphrase.",
+    "@passphraseInputWrong": {
+        "description": "Error shown when the entered passphrase could not unlock the private key",
+        "context": "Add identity flow, passphrase input"
+    },
+    "passphraseInputPrompt": "You need to enter a passphrase for the following identities:",
+    "@passphraseInputPrompt": {
+        "description": "Text above the passphrase field explaining that a passphrase is required for the listed identities",
+        "context": "Passphrase input"
+    },
+    "enquote": "“{text}”",
+    "@enquote": {
+        "description": "Encloses the given text in typographic quotation marks",
+        "context": "Passphrase input, identities list",
+        "placeholders": {
+            "text": {
+                "type": "String"
+            }
+        }
+    },
+    "passphraseInputLabel": "Passphrase",
+    "@passphraseInputLabel": {
+        "description": "Label of the passphrase text field",
+        "context": "Passphrase input"
+    },
+    "passphraseInputHelper": "This is the passphrase you entered while creating the identity. Make sure it matches exactly.",
+    "@passphraseInputHelper": {
+        "description": "Helper text below the passphrase text field",
+        "context": "Passphrase input"
+    },
+    "passphraseInputRemember": "Remember using Vault",
+    "@passphraseInputRemember": {
+        "description": "Title of the checkbox that stores the passphrase in the vault",
+        "context": "Passphrase input"
+    },
+    "passphraseInputRememberDescription": "This will store the passphrase on your device so you don’t have to enter it again.",
+    "@passphraseInputRememberDescription": {
+        "description": "Description of the checkbox that stores the passphrase in the vault",
+        "context": "Passphrase input"
+    },
+    "passphraseInputSkip": "Skip",
+    "@passphraseInputSkip": {
+        "description": "Button label to skip entering the passphrase",
+        "context": "Passphrase input"
+    },
+    "passphraseInputContinue": "Continue",
+    "@passphraseInputContinue": {
+        "description": "Button label to submit the entered passphrase",
+        "context": "Passphrase input"
+    },
+    "addContactClipboardEmpty": "Clipboard is empty.",
+    "@addContactClipboardEmpty": {
+        "description": "Message shown when the clipboard contains no text while adding a contact",
+        "context": "Add contact flow, snackbar"
+    },
+    "addContactClipboardReadFailed": "Failed to read clipboard content.",
+    "@addContactClipboardReadFailed": {
+        "description": "Message shown when the clipboard content does not contain any readable public keys",
+        "context": "Add contact flow, snackbar"
+    },
+    "addContactClipboardReadKeys": "Read {count, plural, one{{count} key} other{{count} keys}} from clipboard.",
+    "@addContactClipboardReadKeys": {
+        "description": "Message shown after public keys were successfully read from the clipboard",
+        "context": "Add contact flow, snackbar",
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
+        }
+    },
+    "addIdentityClipboardReadKey": "Read key from clipboard.",
+    "@addIdentityClipboardReadKey": {
+        "description": "Message shown after the identity key was successfully read from the clipboard",
+        "context": "Add identity flow, snackbar"
+    },
+    "addContactFileImport": "Import",
+    "@addContactFileImport": {
+        "description": "Confirm button label of the file picker used to import public keys",
+        "context": "Add contact flow, file picker dialog"
+    },
+    "addContactFileFailed": "Failed to read file.",
+    "@addContactFileFailed": {
+        "description": "Message shown when the selected file could not be read",
+        "context": "Add contact flow, snackbar"
+    },
+    "addContactFileReadFailed": "Failed to read file content.",
+    "@addContactFileReadFailed": {
+        "description": "Message shown when the selected file does not contain any readable public keys",
+        "context": "Add contact flow, snackbar"
+    },
+    "addContactFileReadKeys": "Read {count, plural, one{{count} key} other{{count} keys}} from file.",
+    "@addContactFileReadKeys": {
+        "description": "Message shown after public keys were successfully read from a file",
+        "context": "Add contact flow, snackbar",
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
+        }
+    },
+    "addIdentityFileReadKey": "Read key from file.",
+    "@addIdentityFileReadKey": {
+        "description": "Message shown after the identity key was successfully read from a file",
+        "context": "Add identity flow, snackbar"
+    },
+    "addContactSearchLabel": "Email Address / Identity",
+    "@addContactSearchLabel": {
+        "description": "Label of the text field used to search for a contact's public key online",
+        "context": "Add contact flow, search text field"
+    },
+    "addContactSearchHint": "user@example.net",
+    "@addContactSearchHint": {
+        "description": "Example email address shown as hint in the online key search text field",
+        "context": "Add contact flow, search text field"
+    },
+    "addContactSearchHelper": "This usually is equal to the person’s primary email address.",
+    "@addContactSearchHelper": {
+        "description": "Helper text below the online key search text field explaining what to enter",
+        "context": "Add contact flow, search text field"
+    },
+    "addContactSearchQueryTooShort": "Query must be at least 3 characters long.",
+    "@addContactSearchQueryTooShort": {
+        "description": "Error shown in the search text field when the entered query is shorter than 3 characters",
+        "context": "Add contact flow, search text field error"
+    },
+    "addContactSearchQueryInvalidEmail": "Query must be a valid email address.",
+    "@addContactSearchQueryInvalidEmail": {
+        "description": "Error shown in the search text field when the entered query is not an email address",
+        "context": "Add contact flow, search text field error"
+    },
+    "addContactSearchNoKeys": "No keys found for the given email address.",
+    "@addContactSearchNoKeys": {
+        "description": "Error shown in the search text field when no public keys were found for the entered email address",
+        "context": "Add contact flow, search text field error"
+    },
+    "addContactSearchFailed": "Failed to fetch keys.",
+    "@addContactSearchFailed": {
+        "description": "Error shown in the search text field when fetching public keys failed, for example due to a network error",
+        "context": "Add contact flow, search text field error"
+    },
+    "addContactSearchResultUnusable": "Key cannot be used here.",
+    "@addContactSearchResultUnusable": {
+        "description": "Subtitle of a search result whose key data could not be parsed, is invalid, or cannot be used",
+        "context": "Add contact flow, search result list"
+    },
+    "addContactSearchResultExpired": "It has already expired.",
+    "@addContactSearchResultExpired": {
+        "description": "Reason appended to the unusable search result subtitle when the key has expired",
+        "context": "Add contact flow, search result list"
+    },
+    "addContactSearchResultRevoked": "It has been revoked.",
+    "@addContactSearchResultRevoked": {
+        "description": "Reason appended to the unusable search result subtitle when the key has been revoked",
+        "context": "Add contact flow, search result list"
+    },
+    "addContactSearchResultUnreadable": "This app is having trouble reading it.",
+    "@addContactSearchResultUnreadable": {
+        "description": "Reason appended to the unusable search result subtitle when the key could not be parsed or is otherwise invalid",
+        "context": "Add contact flow, search result list"
+    },
+    "addContactSearchResultNotInPrimaryTooltip": "This key is not present in the primary search result.",
+    "@addContactSearchResultNotInPrimaryTooltip": {
+        "description": "Tooltip of the warning icon on a search result whose key was not found in the primary (first) search result",
+        "context": "Add contact flow, search result list"
+    },
+    "addContactSearchResultDiffersTooltip": "This key is different from its counterpart in the primary search result. It may be outdated.",
+    "@addContactSearchResultDiffersTooltip": {
+        "description": "Tooltip of the warning icon on a search result whose key differs from the same key in the primary (first) search result",
+        "context": "Add contact flow, search result list"
+    },
+    "addContactSearchResultPreferredTooltip": "This is the preferred search result. You should probably pick this key before any others.",
+    "@addContactSearchResultPreferredTooltip": {
+        "description": "Tooltip of the star icon on the preferred search result",
+        "context": "Add contact flow, search result list"
+    },
+    "addContactSearchResultIdentityVerifiedTooltip": "This key server verifies that uploaded keys belong to their listed email addresses.",
+    "@addContactSearchResultIdentityVerifiedTooltip": {
+        "description": "Tooltip of the check icon on a search result whose key server verifies the identity of uploaded keys",
+        "context": "Add contact flow, search result list"
+    },
+    "addContactSearchAdded": "Added 1 key from search.",
+    "@addContactSearchAdded": {
+        "description": "Message shown after a public key from the online search was selected and added",
+        "context": "Add contact flow, snackbar"
+    },
+    "keyFetchOriginWebKeyDirectoryAdvanced": "Web Key Directory (Advanced)",
+    "@keyFetchOriginWebKeyDirectoryAdvanced": {
+        "description": "Name of the key source for the advanced Web Key Directory (WKD) lookup method",
+        "context": "Add contact flow, search result title"
+    },
+    "keyFetchOriginWebKeyDirectoryDirect": "Web Key Directory (Direct)",
+    "@keyFetchOriginWebKeyDirectoryDirect": {
+        "description": "Name of the key source for the direct Web Key Directory (WKD) lookup method",
+        "context": "Add contact flow, search result title"
+    },
+    "keyFetchOriginHkpKeyServer": "HKP Key Server",
+    "@keyFetchOriginHkpKeyServer": {
+        "description": "Generic name of a key source that is an HKP keyserver",
+        "context": "Add contact flow, search result title"
+    },
+    "keyFetchKeyserverTitle": "{name} Keyserver",
+    "@keyFetchKeyserverTitle": {
+        "description": "Title of a search result that was fetched from a named keyserver",
+        "context": "Add contact flow, search result title",
+        "placeholders": {
+            "name": {
+                "type": "String"
+            }
+        }
+    },
+    "contactsEmpty": "No contacts yet.",
+    "@contactsEmpty": {
+        "description": "Message shown when the contact list is empty",
+        "context": "Contacts screen, empty state"
+    },
+    "contactsAddTooltip": "Add",
+    "@contactsAddTooltip": {
+        "description": "Tooltip of the floating action button used to add a new contact",
+        "context": "Main screen, floating action button"
+    },
+    "identitiesUnlock": "Unlock!",
+    "@identitiesUnlock": {
+        "description": "Call to action shown under the locked vault icon; tapping it starts unlocking the vault",
+        "context": "Identities screen, locked state"
+    },
+    "identitiesEmpty": "No identities yet.\nStart by creating one!",
+    "@identitiesEmpty": {
+        "description": "Message shown when the identities list is empty, with a hint to create one",
+        "context": "Identities screen, empty state"
+    },
+    "settingsHkpKeyServers": "HKP key servers",
+    "@settingsHkpKeyServers": {
+        "description": "Title of the setting that selects which HKP key servers are used to search for public keys",
+        "context": "Settings screen, key server option"
+    },
+    "settingsMiscellaneous": "Miscellaneous",
+    "@settingsMiscellaneous": {
+        "description": "Headline of the settings section containing assorted options",
+        "context": "Settings screen, section headline"
+    },
+    "settingsDeleteStoredPassphrases": "Delete stored passphrases",
+    "@settingsDeleteStoredPassphrases": {
+        "description": "Title of the option that deletes all passphrases the app has stored",
+        "context": "Settings screen, miscellaneous section"
+    },
+    "settingsAboutApp": "About this app",
+    "@settingsAboutApp": {
+        "description": "Title of the option that opens the about screen",
+        "context": "Settings screen, miscellaneous section"
+    },
+    "appBarUnlockTooltip": "Unlock vault",
+    "@appBarUnlockTooltip": {
+        "description": "Tooltip of the app bar button that unlocks the vault while it is locked",
+        "context": "Main screen, app bar action"
+    },
+    "appBarUnlockedTooltip": "Vault unlocked",
+    "@appBarUnlockedTooltip": {
+        "description": "Tooltip of the app bar button while the vault is already unlocked",
+        "context": "Main screen, app bar action"
+    },
+    "appBarSettingsTooltip": "Settings",
+    "@appBarSettingsTooltip": {
+        "description": "Tooltip of the app bar button that opens the settings",
+        "context": "Main screen, app bar action"
     }
 }

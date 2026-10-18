@@ -26,14 +26,21 @@ dependencies:
   permission_handler: ^13.0.2
   open_settings_plus: ^0.5.1
 
+  drift: ^2.35.0
+  drift_flutter: ^0.3.1
   flutter_secure_storage: ^11.2.0
   path_provider: ^2.1.6
+  http: ^1.6.0
+  file_selector: ^1.1.0
+  hyphenatorx: ^1.5.11
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
   gitbaker: ^0.1.2
+  drift_dev: ^2.35.0
+  build_runner: ^2.16.1
 
 flutter:
   uses-material-design: true
@@ -41,7 +48,14 @@ flutter:
   assets:
     - assets/icon/
 
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlite3mc
+
 dependency_overrides:
+  # 2.5.0 breaks release builds, see flutter/flutter#194649
+  shared_preferences_android: '>=2.4.28 <2.5.0'
   bluetooth_low_energy_android:
     git: https://github.com/PGPtouch/bluetooth_low_energy_android.git
   material_helper:

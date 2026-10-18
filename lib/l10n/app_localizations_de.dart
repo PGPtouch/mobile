@@ -101,4 +101,219 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get navIdentities => 'Identitäten';
+
+  @override
+  String get vaultUnlockTitle => 'Tresor entsperren';
+
+  @override
+  String get vaultUnlockSubtitle =>
+      'Bestätige deine Identität, um deinen persönlichen Tresor zu entsperren und PGPtouch zu nutzen.';
+
+  @override
+  String get vaultUnlockKeepLocked => 'Gesperrt lassen';
+
+  @override
+  String get vaultUnlockDeviceReauthRequiredTitle =>
+      'Geräte-Neuanmeldung erforderlich';
+
+  @override
+  String get vaultUnlockDeviceReauthRequiredMessage =>
+      'Android konnte nicht auf den sicheren Schlüssel des Tresors zugreifen. Das kann passieren, wenn das Gerät neu authentifiziert werden muss.';
+
+  @override
+  String get vaultUnlockDeviceReauthRequiredStep1 => 'Sperre dein Handy';
+
+  @override
+  String get vaultUnlockDeviceReauthRequiredStep2 => 'Entsperre dein Handy';
+
+  @override
+  String get vaultUnlockDeviceReauthRequiredStep3 => 'Versuche es erneut';
+
+  @override
+  String get addContactSourceSearch => 'Online suchen';
+
+  @override
+  String get addContactSourceClipboard => 'Aus Zwischenablage einfügen';
+
+  @override
+  String get addContactSourceFile => 'Aus Datei importieren';
+
+  @override
+  String get addIdentitySourceCreate => 'Neuen erstellen';
+
+  @override
+  String get passphraseInputWrong => 'Falsche Passphrase.';
+
+  @override
+  String get passphraseInputPrompt =>
+      'Du musst eine Passphrase für die folgenden Identitäten eingeben:';
+
+  @override
+  String enquote(String text) {
+    return '„$text“';
+  }
+
+  @override
+  String get passphraseInputLabel => 'Passphrase';
+
+  @override
+  String get passphraseInputHelper =>
+      'Die Passphrase, die du beim Erstellen der Identität eingegeben hast. Achte darauf, dass sie exakt übereinstimmt.';
+
+  @override
+  String get passphraseInputRemember => 'Im Tresor merken';
+
+  @override
+  String get passphraseInputRememberDescription =>
+      'Die Passphrase wird auf dem Gerät gespeichert, damit du sie nicht erneut eingeben musst.';
+
+  @override
+  String get passphraseInputSkip => 'Überspringen';
+
+  @override
+  String get passphraseInputContinue => 'Weiter';
+
+  @override
+  String get addContactClipboardEmpty => 'Die Zwischenablage ist leer.';
+
+  @override
+  String get addContactClipboardReadFailed =>
+      'Inhalt der Zwischenablage konnte nicht gelesen werden.';
+
+  @override
+  String addContactClipboardReadKeys(int count) {
+    return '$count Schlüssel aus der Zwischenablage gelesen.';
+  }
+
+  @override
+  String get addIdentityClipboardReadKey =>
+      'Schlüssel aus der Zwischenablage gelesen.';
+
+  @override
+  String get addContactFileImport => 'Importieren';
+
+  @override
+  String get addContactFileFailed => 'Datei konnte nicht gelesen werden.';
+
+  @override
+  String get addContactFileReadFailed =>
+      'Dateiinhalt konnte nicht gelesen werden.';
+
+  @override
+  String addContactFileReadKeys(int count) {
+    return '$count Schlüssel aus der Datei gelesen.';
+  }
+
+  @override
+  String get addIdentityFileReadKey => 'Schlüssel aus der Datei gelesen.';
+
+  @override
+  String get addContactSearchLabel => 'E-Mail-Adresse / Identität';
+
+  @override
+  String get addContactSearchHint => 'nutzer@example.net';
+
+  @override
+  String get addContactSearchHelper =>
+      'Das ist normalerweise die primäre E-Mail-Adresse der jeweiligen Person.';
+
+  @override
+  String get addContactSearchQueryTooShort =>
+      'Die Suchanfrage muss mindestens 3 Zeichen lang sein.';
+
+  @override
+  String get addContactSearchQueryInvalidEmail =>
+      'Die Suchanfrage muss eine gültige E-Mail-Adresse sein.';
+
+  @override
+  String get addContactSearchNoKeys =>
+      'Für die angegebene E-Mail-Adresse wurden keine Schlüssel gefunden.';
+
+  @override
+  String get addContactSearchFailed =>
+      'Schlüssel konnten nicht abgerufen werden.';
+
+  @override
+  String get addContactSearchResultUnusable =>
+      'Schlüssel kann hier nicht verwendet werden.';
+
+  @override
+  String get addContactSearchResultExpired => 'Er ist bereits abgelaufen.';
+
+  @override
+  String get addContactSearchResultRevoked => 'Er wurde widerrufen.';
+
+  @override
+  String get addContactSearchResultUnreadable =>
+      'Diese App kann ihn nicht lesen.';
+
+  @override
+  String get addContactSearchResultNotInPrimaryTooltip =>
+      'Dieser Schlüssel ist im primären Suchergebnis nicht enthalten.';
+
+  @override
+  String get addContactSearchResultDiffersTooltip =>
+      'Dieser Schlüssel unterscheidet sich von seinem Gegenstück im primären Suchergebnis. Er könnte veraltet sein.';
+
+  @override
+  String get addContactSearchResultPreferredTooltip =>
+      'Das ist das bevorzugte Suchergebnis. Du solltest diesen Schlüssel vermutlich vor allen anderen wählen.';
+
+  @override
+  String get addContactSearchResultIdentityVerifiedTooltip =>
+      'Dieser Schlüsselserver prüft, ob hochgeladene Schlüssel zu den angegebenen E-Mail-Adressen gehören.';
+
+  @override
+  String get addContactSearchAdded => '1 Schlüssel aus der Suche hinzugefügt.';
+
+  @override
+  String get keyFetchOriginWebKeyDirectoryAdvanced =>
+      'Web Key Directory (Erweitert)';
+
+  @override
+  String get keyFetchOriginWebKeyDirectoryDirect =>
+      'Web Key Directory (Direkt)';
+
+  @override
+  String get keyFetchOriginHkpKeyServer => 'HKP-Schlüsselserver';
+
+  @override
+  String keyFetchKeyserverTitle(String name) {
+    return '$name Schlüsselserver';
+  }
+
+  @override
+  String get contactsEmpty => 'Noch keine Kontakte.';
+
+  @override
+  String get contactsAddTooltip => 'Hinzufügen';
+
+  @override
+  String get identitiesUnlock => 'Entsperren!';
+
+  @override
+  String get identitiesEmpty =>
+      'Noch keine Identitäten.\nErstelle gleich eine!';
+
+  @override
+  String get settingsHkpKeyServers => 'HKP-Schlüsselserver';
+
+  @override
+  String get settingsMiscellaneous => 'Sonstiges';
+
+  @override
+  String get settingsDeleteStoredPassphrases =>
+      'Gespeicherte Passphrasen löschen';
+
+  @override
+  String get settingsAboutApp => 'Über diese App';
+
+  @override
+  String get appBarUnlockTooltip => 'Tresor entsperren';
+
+  @override
+  String get appBarUnlockedTooltip => 'Tresor entsperrt';
+
+  @override
+  String get appBarSettingsTooltip => 'Einstellungen';
 }

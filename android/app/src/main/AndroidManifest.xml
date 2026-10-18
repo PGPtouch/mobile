@@ -14,13 +14,20 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
 
+    <!-- Biometric-protected secure storage (flutter_secure_storage), install-time -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+
+    <!-- Internet access, install-time -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- Other, install-time -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:label="PGPtouch"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -42,12 +49,6 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <intent-filter>
-                <action android:name="android.nfc.action.TECH_DISCOVERED"/>
-            </intent-filter>
-            <meta-data
-                android:name="android.nfc.action.TECH_DISCOVERED"
-                android:resource="@xml/nfc_tech_filter"/>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

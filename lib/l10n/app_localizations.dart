@@ -239,7 +239,7 @@ abstract class AppLocalizations {
   /// Explanation and instructions for the warning shown when Android's Tap to share could not be blocked
   ///
   /// In en, this message translates to:
-  /// **'Android\'s Tap to share could not be blocked. Turn it off in Settings > Google > Quick Share > Tap to share, or taps may open the contact-share popup.'**
+  /// **'Android’s Tap to share could not be blocked. Turn it off in Settings > Google > Quick Share > Tap to share, or taps may open the contact-share popup.'**
   String get tapToShareInterferingMessage;
 
   /// Label of the navigation bar destination for the contacts list
@@ -259,6 +259,372 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Identities'**
   String get navIdentities;
+
+  /// Title of the Android biometric prompt used to unlock the personal vault
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock vault'**
+  String get vaultUnlockTitle;
+
+  /// Subtitle of the Android biometric prompt explaining why the vault must be unlocked
+  ///
+  /// In en, this message translates to:
+  /// **'Verify your identity to unlock your personal vault and start using PGPtouch.'**
+  String get vaultUnlockSubtitle;
+
+  /// Negative button label of the biometric prompt that cancels unlocking the vault
+  ///
+  /// In en, this message translates to:
+  /// **'Keep locked'**
+  String get vaultUnlockKeepLocked;
+
+  /// Title of the message shown when unlocking the vault failed because the Android Keystore reports the key as locked until the device is locked and unlocked again
+  ///
+  /// In en, this message translates to:
+  /// **'Device reauthentication required'**
+  String get vaultUnlockDeviceReauthRequiredTitle;
+
+  /// Message shown when unlocking the vault failed because the Android Keystore reports the key as locked until the device is locked and unlocked again
+  ///
+  /// In en, this message translates to:
+  /// **'Android couldn’t access the vault’s secure key. This may happen if the device needs to be reauthenticated.'**
+  String get vaultUnlockDeviceReauthRequiredMessage;
+
+  /// First step instruction for reauthenticating the device when the vault's secure key is inaccessible
+  ///
+  /// In en, this message translates to:
+  /// **'Lock your phone'**
+  String get vaultUnlockDeviceReauthRequiredStep1;
+
+  /// Second step instruction for reauthenticating the device when the vault's secure key is inaccessible
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock your phone'**
+  String get vaultUnlockDeviceReauthRequiredStep2;
+
+  /// Third step instruction for reauthenticating the device when the vault's secure key is inaccessible
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get vaultUnlockDeviceReauthRequiredStep3;
+
+  /// Option in the add contact source chooser to search for a contact online
+  ///
+  /// In en, this message translates to:
+  /// **'Search online'**
+  String get addContactSourceSearch;
+
+  /// Option in the add contact source chooser to import a contact from the clipboard
+  ///
+  /// In en, this message translates to:
+  /// **'Paste from clipboard'**
+  String get addContactSourceClipboard;
+
+  /// Option in the add contact source chooser to import a contact from a file
+  ///
+  /// In en, this message translates to:
+  /// **'Import from file'**
+  String get addContactSourceFile;
+
+  /// Option in the add identity source chooser to create a new identity (key pair) from scratch
+  ///
+  /// In en, this message translates to:
+  /// **'Create new'**
+  String get addIdentitySourceCreate;
+
+  /// Error shown when the entered passphrase could not unlock the private key
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong passphrase.'**
+  String get passphraseInputWrong;
+
+  /// Text above the passphrase field explaining that a passphrase is required for the listed identities
+  ///
+  /// In en, this message translates to:
+  /// **'You need to enter a passphrase for the following identities:'**
+  String get passphraseInputPrompt;
+
+  /// Encloses the given text in typographic quotation marks
+  ///
+  /// In en, this message translates to:
+  /// **'“{text}”'**
+  String enquote(String text);
+
+  /// Label of the passphrase text field
+  ///
+  /// In en, this message translates to:
+  /// **'Passphrase'**
+  String get passphraseInputLabel;
+
+  /// Helper text below the passphrase text field
+  ///
+  /// In en, this message translates to:
+  /// **'This is the passphrase you entered while creating the identity. Make sure it matches exactly.'**
+  String get passphraseInputHelper;
+
+  /// Title of the checkbox that stores the passphrase in the vault
+  ///
+  /// In en, this message translates to:
+  /// **'Remember using Vault'**
+  String get passphraseInputRemember;
+
+  /// Description of the checkbox that stores the passphrase in the vault
+  ///
+  /// In en, this message translates to:
+  /// **'This will store the passphrase on your device so you don’t have to enter it again.'**
+  String get passphraseInputRememberDescription;
+
+  /// Button label to skip entering the passphrase
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get passphraseInputSkip;
+
+  /// Button label to submit the entered passphrase
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get passphraseInputContinue;
+
+  /// Message shown when the clipboard contains no text while adding a contact
+  ///
+  /// In en, this message translates to:
+  /// **'Clipboard is empty.'**
+  String get addContactClipboardEmpty;
+
+  /// Message shown when the clipboard content does not contain any readable public keys
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to read clipboard content.'**
+  String get addContactClipboardReadFailed;
+
+  /// Message shown after public keys were successfully read from the clipboard
+  ///
+  /// In en, this message translates to:
+  /// **'Read {count, plural, one{{count} key} other{{count} keys}} from clipboard.'**
+  String addContactClipboardReadKeys(int count);
+
+  /// Message shown after the identity key was successfully read from the clipboard
+  ///
+  /// In en, this message translates to:
+  /// **'Read key from clipboard.'**
+  String get addIdentityClipboardReadKey;
+
+  /// Confirm button label of the file picker used to import public keys
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get addContactFileImport;
+
+  /// Message shown when the selected file could not be read
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to read file.'**
+  String get addContactFileFailed;
+
+  /// Message shown when the selected file does not contain any readable public keys
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to read file content.'**
+  String get addContactFileReadFailed;
+
+  /// Message shown after public keys were successfully read from a file
+  ///
+  /// In en, this message translates to:
+  /// **'Read {count, plural, one{{count} key} other{{count} keys}} from file.'**
+  String addContactFileReadKeys(int count);
+
+  /// Message shown after the identity key was successfully read from a file
+  ///
+  /// In en, this message translates to:
+  /// **'Read key from file.'**
+  String get addIdentityFileReadKey;
+
+  /// Label of the text field used to search for a contact's public key online
+  ///
+  /// In en, this message translates to:
+  /// **'Email Address / Identity'**
+  String get addContactSearchLabel;
+
+  /// Example email address shown as hint in the online key search text field
+  ///
+  /// In en, this message translates to:
+  /// **'user@example.net'**
+  String get addContactSearchHint;
+
+  /// Helper text below the online key search text field explaining what to enter
+  ///
+  /// In en, this message translates to:
+  /// **'This usually is equal to the person’s primary email address.'**
+  String get addContactSearchHelper;
+
+  /// Error shown in the search text field when the entered query is shorter than 3 characters
+  ///
+  /// In en, this message translates to:
+  /// **'Query must be at least 3 characters long.'**
+  String get addContactSearchQueryTooShort;
+
+  /// Error shown in the search text field when the entered query is not an email address
+  ///
+  /// In en, this message translates to:
+  /// **'Query must be a valid email address.'**
+  String get addContactSearchQueryInvalidEmail;
+
+  /// Error shown in the search text field when no public keys were found for the entered email address
+  ///
+  /// In en, this message translates to:
+  /// **'No keys found for the given email address.'**
+  String get addContactSearchNoKeys;
+
+  /// Error shown in the search text field when fetching public keys failed, for example due to a network error
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to fetch keys.'**
+  String get addContactSearchFailed;
+
+  /// Subtitle of a search result whose key data could not be parsed, is invalid, or cannot be used
+  ///
+  /// In en, this message translates to:
+  /// **'Key cannot be used here.'**
+  String get addContactSearchResultUnusable;
+
+  /// Reason appended to the unusable search result subtitle when the key has expired
+  ///
+  /// In en, this message translates to:
+  /// **'It has already expired.'**
+  String get addContactSearchResultExpired;
+
+  /// Reason appended to the unusable search result subtitle when the key has been revoked
+  ///
+  /// In en, this message translates to:
+  /// **'It has been revoked.'**
+  String get addContactSearchResultRevoked;
+
+  /// Reason appended to the unusable search result subtitle when the key could not be parsed or is otherwise invalid
+  ///
+  /// In en, this message translates to:
+  /// **'This app is having trouble reading it.'**
+  String get addContactSearchResultUnreadable;
+
+  /// Tooltip of the warning icon on a search result whose key was not found in the primary (first) search result
+  ///
+  /// In en, this message translates to:
+  /// **'This key is not present in the primary search result.'**
+  String get addContactSearchResultNotInPrimaryTooltip;
+
+  /// Tooltip of the warning icon on a search result whose key differs from the same key in the primary (first) search result
+  ///
+  /// In en, this message translates to:
+  /// **'This key is different from its counterpart in the primary search result. It may be outdated.'**
+  String get addContactSearchResultDiffersTooltip;
+
+  /// Tooltip of the star icon on the preferred search result
+  ///
+  /// In en, this message translates to:
+  /// **'This is the preferred search result. You should probably pick this key before any others.'**
+  String get addContactSearchResultPreferredTooltip;
+
+  /// Tooltip of the check icon on a search result whose key server verifies the identity of uploaded keys
+  ///
+  /// In en, this message translates to:
+  /// **'This key server verifies that uploaded keys belong to their listed email addresses.'**
+  String get addContactSearchResultIdentityVerifiedTooltip;
+
+  /// Message shown after a public key from the online search was selected and added
+  ///
+  /// In en, this message translates to:
+  /// **'Added 1 key from search.'**
+  String get addContactSearchAdded;
+
+  /// Name of the key source for the advanced Web Key Directory (WKD) lookup method
+  ///
+  /// In en, this message translates to:
+  /// **'Web Key Directory (Advanced)'**
+  String get keyFetchOriginWebKeyDirectoryAdvanced;
+
+  /// Name of the key source for the direct Web Key Directory (WKD) lookup method
+  ///
+  /// In en, this message translates to:
+  /// **'Web Key Directory (Direct)'**
+  String get keyFetchOriginWebKeyDirectoryDirect;
+
+  /// Generic name of a key source that is an HKP keyserver
+  ///
+  /// In en, this message translates to:
+  /// **'HKP Key Server'**
+  String get keyFetchOriginHkpKeyServer;
+
+  /// Title of a search result that was fetched from a named keyserver
+  ///
+  /// In en, this message translates to:
+  /// **'{name} Keyserver'**
+  String keyFetchKeyserverTitle(String name);
+
+  /// Message shown when the contact list is empty
+  ///
+  /// In en, this message translates to:
+  /// **'No contacts yet.'**
+  String get contactsEmpty;
+
+  /// Tooltip of the floating action button used to add a new contact
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get contactsAddTooltip;
+
+  /// Call to action shown under the locked vault icon; tapping it starts unlocking the vault
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock!'**
+  String get identitiesUnlock;
+
+  /// Message shown when the identities list is empty, with a hint to create one
+  ///
+  /// In en, this message translates to:
+  /// **'No identities yet.\nStart by creating one!'**
+  String get identitiesEmpty;
+
+  /// Title of the setting that selects which HKP key servers are used to search for public keys
+  ///
+  /// In en, this message translates to:
+  /// **'HKP key servers'**
+  String get settingsHkpKeyServers;
+
+  /// Headline of the settings section containing assorted options
+  ///
+  /// In en, this message translates to:
+  /// **'Miscellaneous'**
+  String get settingsMiscellaneous;
+
+  /// Title of the option that deletes all passphrases the app has stored
+  ///
+  /// In en, this message translates to:
+  /// **'Delete stored passphrases'**
+  String get settingsDeleteStoredPassphrases;
+
+  /// Title of the option that opens the about screen
+  ///
+  /// In en, this message translates to:
+  /// **'About this app'**
+  String get settingsAboutApp;
+
+  /// Tooltip of the app bar button that unlocks the vault while it is locked
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock vault'**
+  String get appBarUnlockTooltip;
+
+  /// Tooltip of the app bar button while the vault is already unlocked
+  ///
+  /// In en, this message translates to:
+  /// **'Vault unlocked'**
+  String get appBarUnlockedTooltip;
+
+  /// Tooltip of the app bar button that opens the settings
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get appBarSettingsTooltip;
 }
 
 class _AppLocalizationsDelegate
