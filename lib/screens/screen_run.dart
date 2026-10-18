@@ -1,22 +1,29 @@
-import 'package:dart_pg/dart_pg.dart';
 import 'package:flutter/foundation.dart';
 import 'package:material_graphics/material_graphics.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:mobile/components/passphrase_input.dart';
 import 'package:mobile/components/protocol_manager_builder.dart';
 import 'package:mobile/components/protocol_permission_builder.dart';
 import 'package:mobile/l10n/app_localizations.dart';
+import 'package:shared/shared.dart';
 
-bool _isGeneratingKeys = false;
-PrivateKey? _keyPair;
+import '../database/key_store.dart' as key_store;
 
 class ScreenRun extends StatefulWidget {
   final ProtocolManagerState protocol;
   final ProtocolPermissionState permissions;
 
+  final int? selectedKey;
+  final String? selectedKeyUserIdDisplay;
+  final String? selectedKeyFingerprint;
+
   const ScreenRun({
     super.key,
     required this.protocol,
     required this.permissions,
+    required this.selectedKey,
+    required this.selectedKeyUserIdDisplay,
+    required this.selectedKeyFingerprint,
   });
 
   @override
@@ -103,27 +110,24 @@ class _ScreenRunState extends State<ScreenRun> {
               ),
               OutlinedButton(
                 onPressed:
-                    _keyPair == null ||
+                    widget.selectedKey == null ||
                         contactMode.value != .done ||
                         !widget.permissions.areRadiosEnabled
                     ? null
                     : _start,
                 child: Text(appLocalizations.restartTransaction),
               ),
+              Text(widget.selectedKeyUserIdDisplay ?? ""),
               Text(
-                formatFingerprint(_keyPair!.fingerprint),
-                style: Theme.of(context).textTheme.bodySmall?.googleSansCode
-                    .copyWith(
-                      fontSize: 10,
-                      color: ColorScheme.of(context).onSurfaceVariant,
-                    ),
+                formatFingerprint(
+                  transportFingerprintToBytes(
+                    widget.selectedKeyFingerprint ?? "",
+                  )!,
+                ),
+                style: DefaultTextStyle.of(context).style.googleSansCode,
               ),
             ]
           : [
-              OutlinedButton(
-                onPressed: _generateKeys,
-                child: Text(appLocalizations.generateKeys),
-              ),
               if (widget.permissions.canRequestPermissions)
                 OutlinedButton(
                   onPressed: widget.permissions.requestPermissions,
@@ -141,23 +145,22 @@ class _ScreenRunState extends State<ScreenRun> {
                 ),
               FilledButton(
                 onPressed:
-                    _keyPair == null ||
-                        _isGeneratingKeys ||
+                    widget.selectedKey == null ||
                         !widget.permissions.areRadiosEnabled ||
                         !widget.permissions.arePermissionsGranted
                     ? null
                     : _start,
                 child: Text(appLocalizations.startTransaction),
               ),
-              if (_keyPair != null)
-                Text(
-                  formatFingerprint(_keyPair!.fingerprint),
-                  style: Theme.of(context).textTheme.bodySmall?.googleSansCode
-                      .copyWith(
-                        fontSize: 10,
-                        color: ColorScheme.of(context).onSurfaceVariant,
-                      ),
+              Text(widget.selectedKeyUserIdDisplay ?? ""),
+              Text(
+                formatFingerprint(
+                  transportFingerprintToBytes(
+                    widget.selectedKeyFingerprint ?? "",
+                  )!,
                 ),
+                style: DefaultTextStyle.of(context).style.googleSansCode,
+              ),
               if (widget.permissions.isNfcAvailable == false)
                 Text(appLocalizations.nfcNotAvailable),
               if (widget.permissions.isBluetoothAvailable == false)
@@ -167,31 +170,69 @@ class _ScreenRunState extends State<ScreenRun> {
   }
 
   Future<void> _start() async {
-    if (_keyPair == null) return;
+    if (widget.selectedKey == null) return;
+    final appLocalizations = AppLocalizations.of(context);
+
+    final unlock = await key_store.KeyStoreHandler.instance.unlock(
+      appLocalizations,
+    );
+    if (unlock != .unlocked) {
+      return;
+    }
+
+    final keyStore = key_store.KeyStoreHandler.instance.keyStore!;
+    final key = await (keyStore.select(
+      keyStore.keys,
+    )..where((k) => k.id.equals(widget.selectedKey!))).getSingle();
+    final userIds = await key.getUserIds(keyStore);
+
+    final privateData = Uint8List.fromList(key.privateData);
+
+    // An empty passphrase also covers keys that aren't encrypted at all.
+    final storedPassphrase = await key_store.KeyStoreHandler.instance
+        .getKeyPassphrase(key.fingerprint);
+    var privateKey = await decryptPrivateKey(
+      privateData,
+      storedPassphrase ?? "",
+    );
+    var remember = false;
+    String? enteredPassphrase;
+
+    if (privateKey == null) {
+      if (!mounted) return;
+      final tmp = await showPassphraseInputDialog(
+        context,
+        identity: userIds
+            .map(
+              (id) => UserId(
+                name: id.name,
+                comment: id.comment,
+                email: id.email,
+              ).toString(),
+            )
+            .toList(),
+        fingerprint: key.fingerprint,
+        validate: (passphrase) async {
+          privateKey = await decryptPrivateKey(privateData, passphrase);
+          return privateKey != null
+              ? null
+              : appLocalizations.passphraseInputWrong;
+        },
+      );
+      if (tmp == null || privateKey == null) return;
+      enteredPassphrase = tmp.passphrase;
+      remember = tmp.remember;
+    }
+    if (remember && enteredPassphrase != null) {
+      await key_store.KeyStoreHandler.instance.setKeyPassphrase(
+        key.fingerprint,
+        enteredPassphrase,
+      );
+    }
     await widget.protocol.start(
-      Uint8List.fromList(_keyPair!.publicKey.packetList.encode()),
-      Uint8List.fromList(_keyPair!.packetList.encode()),
-      privateKeyPassphrase: "passphrase",
+      Uint8List.fromList(key.publicData),
+      privateKey!,
     );
-  }
-
-  Future<void> _generateKeys() async {
-    if (_isGeneratingKeys) return;
-    setState(() => _isGeneratingKeys = true);
-
-    final keyPair = await compute(
-      (_) => OpenPGP.generateKey(
-        ["Device <device@example.com>"],
-        "passphrase",
-        type: KeyType.rsa,
-      ) as PrivateKey,
-      null,
-    );
-    if (!mounted) return;
-    setState(() {
-      _keyPair = keyPair;
-      _isGeneratingKeys = false;
-    });
   }
 }
 
@@ -207,7 +248,7 @@ String formatFingerprint(List<int> fingerprint) {
               .toList()
               .asMap()
               .entries) ...[i.value, if (i.key.isOdd) " "],
-    ].join(),
+    ].join().trim(),
     [
       for (var i
           in parts
@@ -215,6 +256,20 @@ String formatFingerprint(List<int> fingerprint) {
               .toList()
               .asMap()
               .entries) ...[i.value, if (i.key.isOdd) " "],
-    ].join(),
+    ].join().trim(),
   ].join("\n");
+}
+
+Uint8List? transportFingerprintToBytes(String fingerprint) {
+  final buffer = StringBuffer();
+  final list = <int>[];
+  for (var char in fingerprint.split("")) {
+    if (char.trim().isEmpty) continue;
+    buffer.write(char);
+    if (buffer.length % 2 == 0) {
+      list.add(int.parse(buffer.toString(), radix: 16));
+      buffer.clear();
+    }
+  }
+  return Uint8List.fromList(list);
 }

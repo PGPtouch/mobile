@@ -1,10 +1,53 @@
 import 'dart:async';
-import 'dart:typed_data';
 
+import 'package:dart_pg/dart_pg.dart';
+import 'package:flutter/foundation.dart';
 import 'package:material_graphics/material_graphics.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:mobile/l10n/app_localizations.dart';
 import 'package:mobile/main.dart';
+import 'package:mobile/screens/screen_run.dart';
+
+Uint8List? _decryptPrivateKey((Uint8List, String) args) {
+  try {
+    final key = PrivateKey(PacketList.decode(args.$1));
+    if (!key.isEncrypted) return args.$1;
+    final decrypted = key.decrypt(args.$2);
+    // Re-encoding the decrypted packets would keep the passphrase protection,
+    // so the key material is written out in the clear instead.
+    return Uint8List.fromList(
+      PacketList([
+        for (final packet in decrypted.packetList)
+          if (packet is SecretSubkeyPacket && packet.secretKeyMaterial != null)
+            SecretSubkeyPacket(
+              packet.publicKey as PublicSubkeyPacket,
+              packet.secretKeyMaterial!.toBytes,
+              secretKeyMaterial: packet.secretKeyMaterial,
+            )
+          else if (packet is SecretKeyPacket &&
+              packet.secretKeyMaterial != null)
+            SecretKeyPacket(
+              packet.publicKey,
+              packet.secretKeyMaterial!.toBytes,
+              secretKeyMaterial: packet.secretKeyMaterial,
+            )
+          else
+            packet,
+      ]).encode(),
+    );
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Unlocks [privateKey] with [passphrase] in a background isolate.
+///
+/// Returns the private key without passphrase protection, or `null` if
+/// [passphrase] is wrong. A key that isn't encrypted is returned as is. The
+/// result can be handed to consumers without a passphrase, sparing them from
+/// decrypting again.
+Future<Uint8List?> decryptPrivateKey(Uint8List privateKey, String passphrase) =>
+    compute(_decryptPrivateKey, (privateKey, passphrase));
 
 class PassphraseInput extends StatefulWidget {
   /// The identity for which the passphrase is being requested.
@@ -28,8 +71,8 @@ class PassphraseInput extends StatefulWidget {
   /// The callback on a successful submission of the passphrase.
   ///
   /// If this returns a string, it is displayed as an error message. This should
-  /// remove the [PassphraseInput] widget from view, as the widget will become
-  /// reeditable by the user.
+  /// remove the [PassphraseInput] widget from view, as the widget will stay
+  /// in a loading state if this returns no error.
   final FutureOr<String?> Function(String passphrase, bool remember) onSubmit;
 
   /// The callback when the user cancels the input.
@@ -58,16 +101,24 @@ class _PassphraseInputState extends State<PassphraseInput> {
   final TextEditingController _controller = TextEditingController();
   bool _remember = false;
 
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   void _submit() {
     if (_isLoading) return;
     _isLoading = true;
     _error = null;
     if (mounted) setState(() {});
-    Future.value(widget.onSubmit(_controller.text, _remember)).then((error) {
-      if (error != null) _isLoading = false;
-      _error = error;
-      if (mounted) setState(() {});
-    });
+    Future.value(widget.onSubmit(_controller.text, _remember))
+        .catchError((e) => e.toString())
+        .then((error) {
+          if (error != null) _isLoading = false;
+          _error = error;
+          if (mounted) setState(() {});
+        });
   }
 
   void _cancel(bool skipped) => widget.onCancel?.call(skipped);
@@ -75,12 +126,13 @@ class _PassphraseInputState extends State<PassphraseInput> {
   @override
   Widget build(BuildContext context) {
     final appLocalizations = AppLocalizations.of(context);
-    final colorScheme = Theme.of(context).colorScheme;
+    final colorScheme = ColorScheme.of(context);
+    final textTheme = TextTheme.of(context);
 
     return PopScope(
       canPop: !_isLoading,
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop) _cancel(widget.skippable);
+        if (didPop) _cancel(false);
       },
       child: Padding(
         padding:
@@ -91,14 +143,32 @@ class _PassphraseInputState extends State<PassphraseInput> {
           mainAxisSize: .min,
           crossAxisAlignment: .start,
           children: [
-            Text(
-              "${hyphenate(appLocalizations.passphraseInputPrompt)} ${widget.identity.map((e) => appLocalizations.enquote(e)).join(", ")}",
+            Tooltip(
+              message: formatFingerprint(widget.fingerprint),
+              textStyle: textTheme.bodyMedium!.googleSansCode.copyWith(
+                color: colorScheme.brightness == Brightness.dark
+                    ? Colors.black
+                    : Colors.white,
+              ),
+              child: Text(
+                "${hyphenate(appLocalizations.passphraseInputPrompt)} ${widget.identity.map((e) => appLocalizations.enquote(e)).join(", ")}",
+              ),
             ),
-            SizedBox(height: 16),
+            // SizedBox(height: 2),
+            // SizedBox(
+            //   width: double.infinity,
+            //   child: Text(
+            //     formatFingerprint(widget.fingerprint).replaceFirst("\n", " "),
+            //     textAlign: .end,
+            //     style: textTheme.labelSmall!.googleSansCode,
+            //   ),
+            // ),
+            SizedBox(height: 18),
             AnimatedSize(
               curve: ExpressiveCurves.expressiveEffects.slow,
               duration: ExpressiveCurves.expressiveEffects.slowDuration,
               alignment: Alignment.topCenter,
+              clipBehavior: Clip.none,
               child: TextField(
                 controller: _controller,
                 autofocus: true,
@@ -113,7 +183,6 @@ class _PassphraseInputState extends State<PassphraseInput> {
                 decoration: InputDecoration(
                   border: OutlineInputBorder(),
                   labelText: appLocalizations.passphraseInputLabel,
-                  helperText: hyphenate(appLocalizations.passphraseInputHelper),
                   helperMaxLines: 3,
                   errorText: _error,
                   errorMaxLines: 3,
@@ -186,6 +255,8 @@ Future<({String passphrase, bool remember})?> showPassphraseInputDialog(
   bool skippable = false,
 }) => showModalBottomSheet<({String passphrase, bool remember})?>(
   context: context,
+  isScrollControlled: true,
+  clipBehavior: Clip.antiAlias,
   builder: (context) => PassphraseInput(
     identity: identity,
     fingerprint: fingerprint,
@@ -193,11 +264,16 @@ Future<({String passphrase, bool remember})?> showPassphraseInputDialog(
     onSubmit: (passphrase, remember) async {
       final validation = validate != null
           ? await Future.value(validate.call(passphrase))
+                .catchError((e) => e.toString())
           : null;
       if (validation != null) return validation;
-      if (!context.mounted) return null;
-      Navigator.of(context).pop((passphrase: passphrase, remember: remember));
+      if (context.mounted) {
+        Navigator.of(context).pop((passphrase: passphrase, remember: remember));
+      }
       return null;
+    },
+    onCancel: (skipped) {
+      if (skipped) Navigator.of(context).pop(null);
     },
   ),
 );

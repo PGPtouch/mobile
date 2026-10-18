@@ -65,9 +65,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get restartTransaction => 'Restart transaction';
 
   @override
-  String get generateKeys => 'Generate keys';
-
-  @override
   String get grantPermissions => 'Grant permissions';
 
   @override
@@ -157,10 +154,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get passphraseInputLabel => 'Passphrase';
 
   @override
-  String get passphraseInputHelper =>
-      'This is the passphrase you entered while creating the identity. Make sure it matches exactly.';
-
-  @override
   String get passphraseInputRemember => 'Remember using Vault';
 
   @override
@@ -192,9 +185,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get addIdentityClipboardReadKey => 'Read key from clipboard.';
-
-  @override
   String get addContactFileImport => 'Import';
 
   @override
@@ -213,9 +203,6 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return 'Read $_temp0 from file.';
   }
-
-  @override
-  String get addIdentityFileReadKey => 'Read key from file.';
 
   @override
   String get addContactSearchLabel => 'Email Address / Identity';
@@ -301,6 +288,48 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get identitiesEmpty => 'No identities yet.\nStart by creating one!';
+
+  @override
+  String get identityDetailsHeadline => 'Details';
+
+  @override
+  String get identityCreation => 'Creation';
+
+  @override
+  String get identityExpiration => 'Expiration';
+
+  @override
+  String get identityExpirationNever => 'Never';
+
+  @override
+  String get identityKeyStrength => 'Key strength';
+
+  @override
+  String get identityKeyVersion => 'Key version';
+
+  @override
+  String get identityKeyId => 'Key ID';
+
+  @override
+  String get identityFingerprint => 'Fingerprint';
+
+  @override
+  String get identityPassphraseStored => 'Passphrase is stored';
+
+  @override
+  String get identityPassphraseNotStored => 'Passphrase is not stored';
+
+  @override
+  String get identityPassphraseLoading => 'Loading passphrase status...';
+
+  @override
+  String get identityActionsHeadline => 'Actions';
+
+  @override
+  String get identityDeleteKey => 'Delete key';
+
+  @override
+  String get identityDeleteStoredPassphrase => 'Delete stored passphrase';
 
   @override
   String get settingsHkpKeyServers => 'HKP key servers';

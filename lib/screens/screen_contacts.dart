@@ -20,6 +20,7 @@ class _ScreenContactsState extends State<ScreenContacts> {
   final _contacts = <Contact>{};
   final _contactUserIds = <ContactUserId>{};
   late final StreamSubscription<List<Contact>> _contactSubscription;
+  bool _dataLoaded = false;
 
   @override
   void initState() {
@@ -38,7 +39,6 @@ class _ScreenContactsState extends State<ScreenContacts> {
   }
 
   Future<void> _loadData(List<Contact> newData) async {
-    final newData = await contactStore.select(contactStore.contacts).get();
     final newDataIds = newData.map((contact) => contact.id).toSet();
     final newContactUserIds = await (contactStore.select(
       contactStore.contactUserIds,
@@ -49,6 +49,7 @@ class _ScreenContactsState extends State<ScreenContacts> {
     _contactUserIds
       ..clear()
       ..addAll(newContactUserIds);
+    _dataLoaded = true;
     if (mounted) setState(() {});
   }
 
@@ -58,47 +59,54 @@ class _ScreenContactsState extends State<ScreenContacts> {
     final colorScheme = theme.colorScheme;
     final textTheme = theme.textTheme;
 
-    if (_contacts.isEmpty) {
-      return Center(
-        child: Text(
-          AppLocalizations.of(context).contactsEmpty,
-          style: textTheme.bodyMedium!.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
-        ),
-      );
-    }
-    return ListView(
-      children: [
-        ...MaterialListTile.group(
-          _contacts.map((contact) {
-            final userIds = _contactUserIds
-                .where((c) => c.parent == contact.id)
-                .toList();
-            return MaterialListTile(
-              title: Text(
-                "${contact.displayName ?? ""}\n${userIds.first.name ?? "–"} (${userIds.first.email})"
-                    .trim(),
+    return MaterialLoadedWidgetBuilder(
+      animationStyle: .all,
+      builder: (context) {
+        if (!_dataLoaded) return null;
+
+        if (_contacts.isEmpty) {
+          return Center(
+            child: Text(
+              AppLocalizations.of(context).contactsEmpty,
+              style: textTheme.bodyMedium!.copyWith(
+                color: colorScheme.onSurfaceVariant,
               ),
-              subtitle: Builder(
-                builder: (context) => Text(
-                  formatFingerprint(contact.fingerprint),
-                  style: DefaultTextStyle.of(context).style.googleSansCode,
-                ),
-              ),
-              isThreeLine: true,
-              onLongPress: () => contactStore.transaction(() async {
-                await (contactStore.delete(
-                  contactStore.contacts,
-                )..where((c) => c.id.equals(contact.id))).go();
-                await (contactStore.delete(
-                  contactStore.contactUserIds,
-                )..where((c) => c.parent.equals(contact.id))).go();
-              }),
-            );
-          }).toList(),
-        ),
-      ],
+            ),
+          );
+        }
+        return ListView(
+          children: [
+            ...MaterialListTile.group(
+              _contacts.map((contact) {
+                final userIds = _contactUserIds
+                    .where((c) => c.parent == contact.id)
+                    .toList();
+                return MaterialListTile(
+                  title: Text(
+                    "${contact.displayName ?? ""}\n${userIds.first.name ?? "–"} (${userIds.first.email})"
+                        .trim(),
+                  ),
+                  subtitle: Builder(
+                    builder: (context) => Text(
+                      formatFingerprint(contact.fingerprint),
+                      style: DefaultTextStyle.of(context).style.googleSansCode,
+                    ),
+                  ),
+                  isThreeLine: true,
+                  onLongPress: () => contactStore.transaction(() async {
+                    await (contactStore.delete(
+                      contactStore.contacts,
+                    )..where((c) => c.id.equals(contact.id))).go();
+                    await (contactStore.delete(
+                      contactStore.contactUserIds,
+                    )..where((c) => c.parent.equals(contact.id))).go();
+                  }),
+                );
+              }).toList(),
+            ),
+          ],
+        );
+      },
     );
   }
 }

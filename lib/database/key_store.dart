@@ -250,11 +250,13 @@ final class KeyStoreHandler extends ChangeNotifier {
       key: "key_${_bytesToHex(fingerprint)}",
       value: passphrase,
     );
+    notifyListeners();
   }
 
   Future<void> deleteKeyPassphrase(Uint8List fingerprint) async {
     if (_keyStore == null) throw StateError("KeyStore is locked");
     await _flutterSecureStorage!.delete(key: "key_${_bytesToHex(fingerprint)}");
+    notifyListeners();
   }
 }
 

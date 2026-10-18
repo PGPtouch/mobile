@@ -20,15 +20,14 @@ String? _tryDecodeUtf8(Uint8List input) {
   }
 }
 
+String _hex(Uint8List bytes) =>
+    bytes.map((b) => b.toRadixString(16).padLeft(2, "0")).join();
+
 final _armoredKeyBlock = RegExp(
   r"-----BEGIN PGP (PUBLIC|PRIVATE) KEY BLOCK-----[\s\S]*?-----END PGP \1 KEY BLOCK-----",
 );
 
-/// Reads exactly one public and one private key from [input] (armored or
-/// binary) and returns them as `(publicKey, privateKey)` packet list bytes.
-/// If no public key is present, it is derived from the private key.
-/// Returns null if the input is invalid, ambiguous or the keys don't match.
-(Uint8List, Uint8List)? _tryParseIdentityKeys(Uint8List input) {
+List<(Uint8List, Uint8List)>? _tryParseIdentityKeys(Uint8List input) {
   try {
     final publicKeys = <PublicKey>[];
     final privateKeys = <PrivateKey>[];
@@ -70,29 +69,38 @@ final _armoredKeyBlock = RegExp(
       }
     }
 
-    if (privateKeys.length != 1 || publicKeys.length > 1) return null;
-    final privateKey = privateKeys.single;
-    final publicKey = publicKeys.isEmpty
-        ? privateKey.publicKey as PublicKey
-        : publicKeys.single;
-    if (!listEquals(publicKey.fingerprint, privateKey.fingerprint)) {
-      return null;
+    if (privateKeys.isEmpty) return null;
+
+    final seen = <String>{};
+    final publicByFingerprint = <String, PublicKey>{};
+    for (final publicKey in publicKeys) {
+      if (publicByFingerprint.putIfAbsent(
+            _hex(publicKey.fingerprint),
+            () => publicKey,
+          ) !=
+          publicKey) {
+        return null;
+      }
     }
-    if (publicKey.users.any((u) => UserId.tryParse(u.userID) == null)) {
-      return null;
+
+    final result = <(Uint8List, Uint8List)>[];
+    for (final privateKey in privateKeys) {
+      final fingerprint = _hex(privateKey.fingerprint);
+      if (!seen.add(fingerprint)) return null;
+      final publicKey =
+          publicByFingerprint.remove(fingerprint) ??
+          privateKey.publicKey as PublicKey;
+      if (publicKey.users.any((u) => UserId.tryParse(u.userID) == null)) {
+        return null;
+      }
+      result.add((
+        publicKey.packetList.encode(),
+        privateKey.packetList.encode(),
+      ));
     }
-    return (publicKey.packetList.encode(), privateKey.packetList.encode());
+    return result;
   } catch (_) {
     return null;
-  }
-}
-
-bool _tryDecryptPrivateKey((Uint8List, String) args) {
-  try {
-    PrivateKey(PacketList.decode(args.$1)).decrypt(args.$2);
-    return true;
-  } catch (_) {
-    return false;
   }
 }
 
@@ -118,7 +126,7 @@ class _IdentitySourceChooserState extends State<_IdentitySourceChooser> {
     if (_finished) return;
     _finished = true;
     final keys = _pendingKeys!;
-    Navigator.of(context).pop((keys.$1, keys.$2, passphrase));
+    Navigator.of(context).pop([(keys.$1, keys.$2, passphrase)]);
     if (_pendingMessage != null) {
       SnackBarManager.showSnackBar(context, _pendingMessage!);
     }
@@ -134,7 +142,7 @@ class _IdentitySourceChooserState extends State<_IdentitySourceChooser> {
     ]);
     if (!mounted) return;
 
-    final value = result.first as ((Uint8List, Uint8List)?, String?)?;
+    final value = result.first as (List<(Uint8List, Uint8List)>?, String?)?;
     if (value == null) {
       _loadMode = false;
       if (mounted) setState(() {});
@@ -142,12 +150,16 @@ class _IdentitySourceChooserState extends State<_IdentitySourceChooser> {
     }
 
     final keys = value.$1;
-    if (keys != null && isPrivateKeyEncrypted(keys.$2)) {
-      final key = await compute((_) => publicKeyFromBytes(keys.$1), null);
+    if (keys != null &&
+        keys.length == 1 &&
+        isPrivateKeyEncrypted(keys.single.$2)) {
+      final pair = keys.single;
+      final key = await compute((_) => publicKeyFromBytes(pair.$1), null);
+      if (!mounted) return;
       _pendingIdentity = key.users.map((u) => u.userID).toList();
       _pendingFingerprint = key.fingerprint;
 
-      _pendingKeys = keys;
+      _pendingKeys = pair;
       _pendingMessage = value.$2;
       _loadMode = false;
       _isPassphraseMode = true;
@@ -155,13 +167,17 @@ class _IdentitySourceChooserState extends State<_IdentitySourceChooser> {
       return;
     }
 
-    Navigator.of(context).pop(keys == null ? null : (keys.$1, keys.$2, null));
+    Navigator.of(context).pop(
+      keys == null
+          ? null
+          : [for (final k in keys) (k.$1, k.$2, null as String?)],
+    );
     if (value.$2 != null) {
       SnackBarManager.showSnackBar(context, value.$2!);
     }
   }
 
-  Future<((Uint8List, Uint8List)?, String?)?> _processSelectionFuture(
+  Future<(List<(Uint8List, Uint8List)>?, String?)?> _processSelectionFuture(
     String source,
   ) async {
     final appLocalizations = AppLocalizations.of(context);
@@ -182,7 +198,10 @@ class _IdentitySourceChooserState extends State<_IdentitySourceChooser> {
         if (value == null) {
           return (null, appLocalizations.addContactClipboardReadFailed);
         }
-        return (value, appLocalizations.addIdentityClipboardReadKey);
+        return (
+          value,
+          appLocalizations.addContactClipboardReadKeys(value.length),
+        );
       case "file":
         final file = await openFile(
           confirmButtonText: appLocalizations.addContactFileImport,
@@ -198,14 +217,13 @@ class _IdentitySourceChooserState extends State<_IdentitySourceChooser> {
         if (value == null) {
           return (null, appLocalizations.addContactFileReadFailed);
         }
-        return (value, appLocalizations.addIdentityFileReadKey);
+        return (value, appLocalizations.addContactFileReadKeys(value.length));
     }
     return (null, null);
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = ColorScheme.of(context);
     final appLocalizations = AppLocalizations.of(context);
     final size = MediaQuery.sizeOf(context);
 
@@ -244,13 +262,11 @@ class _IdentitySourceChooserState extends State<_IdentitySourceChooser> {
             fingerprint: _pendingFingerprint!,
             skippable: true,
             onSubmit: (passphrase, remember) async {
-              final valid = await compute(_tryDecryptPrivateKey, (
-                _pendingKeys!.$2,
-                passphrase,
-              ));
+              final valid =
+                  await decryptPrivateKey(_pendingKeys!.$2, passphrase) != null;
               if (!mounted) return null;
               if (!valid) return appLocalizations.passphraseInputWrong;
-              _finish(passphrase);
+              _finish(remember ? passphrase : null);
               return null;
             },
             onCancel: (skipped) {
@@ -326,9 +342,9 @@ class _IdentitySourceChooserState extends State<_IdentitySourceChooser> {
   }
 }
 
-Future<(Uint8List, Uint8List, String?)?> startAddIdentityFlow(
+Future<List<(Uint8List, Uint8List, String?)>?> startAddIdentityFlow(
   BuildContext context,
-) async => await showModalBottomSheet<(Uint8List, Uint8List, String?)>(
+) async => await showModalBottomSheet<List<(Uint8List, Uint8List, String?)>>(
   context: context,
   isScrollControlled: true,
   clipBehavior: Clip.antiAlias,

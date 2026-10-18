@@ -100,11 +100,6 @@
         "description": "Button label to restart the transaction",
         "context": "Main screen, transaction buttons"
     },
-    "generateKeys": "Generate keys",
-    "@generateKeys": {
-        "description": "Button label to generate a new PGP key pair",
-        "context": "Main screen, setup buttons"
-    },
     "grantPermissions": "Grant permissions",
     "@grantPermissions": {
         "description": "Button label to request the required Bluetooth or location permissions",
@@ -245,11 +240,6 @@
         "description": "Label of the passphrase text field",
         "context": "Passphrase input"
     },
-    "passphraseInputHelper": "This is the passphrase you entered while creating the identity. Make sure it matches exactly.",
-    "@passphraseInputHelper": {
-        "description": "Helper text below the passphrase text field",
-        "context": "Passphrase input"
-    },
     "passphraseInputRemember": "Remember using Vault",
     "@passphraseInputRemember": {
         "description": "Title of the checkbox that stores the passphrase in the vault",
@@ -290,11 +280,6 @@
             }
         }
     },
-    "addIdentityClipboardReadKey": "Read key from clipboard.",
-    "@addIdentityClipboardReadKey": {
-        "description": "Message shown after the identity key was successfully read from the clipboard",
-        "context": "Add identity flow, snackbar"
-    },
     "addContactFileImport": "Import",
     "@addContactFileImport": {
         "description": "Confirm button label of the file picker used to import public keys",
@@ -319,11 +304,6 @@
                 "type": "int"
             }
         }
-    },
-    "addIdentityFileReadKey": "Read key from file.",
-    "@addIdentityFileReadKey": {
-        "description": "Message shown after the identity key was successfully read from a file",
-        "context": "Add identity flow, snackbar"
     },
     "addContactSearchLabel": "Email Address / Identity",
     "@addContactSearchLabel": {
@@ -449,6 +429,76 @@
     "@identitiesEmpty": {
         "description": "Message shown when the identities list is empty, with a hint to create one",
         "context": "Identities screen, empty state"
+    },
+    "identityDetailsHeadline": "Details",
+    "@identityDetailsHeadline": {
+        "description": "Headline of the section listing the properties of an identity key",
+        "context": "Identities screen, identity details sheet"
+    },
+    "identityCreation": "Creation",
+    "@identityCreation": {
+        "description": "Title of the entry showing when the key was created",
+        "context": "Identities screen, identity details sheet"
+    },
+    "identityExpiration": "Expiration",
+    "@identityExpiration": {
+        "description": "Title of the entry showing when the key expires",
+        "context": "Identities screen, identity details sheet"
+    },
+    "identityExpirationNever": "Never",
+    "@identityExpirationNever": {
+        "description": "Value shown as expiration date when the key does not expire",
+        "context": "Identities screen, identity tile and identity details sheet"
+    },
+    "identityKeyStrength": "Key strength",
+    "@identityKeyStrength": {
+        "description": "Title of the entry showing the strength of the key",
+        "context": "Identities screen, identity details sheet"
+    },
+    "identityKeyVersion": "Key version",
+    "@identityKeyVersion": {
+        "description": "Title of the entry showing the OpenPGP version of the key",
+        "context": "Identities screen, identity details sheet"
+    },
+    "identityKeyId": "Key ID",
+    "@identityKeyId": {
+        "description": "Title of the entry showing the key ID",
+        "context": "Identities screen, identity details sheet"
+    },
+    "identityFingerprint": "Fingerprint",
+    "@identityFingerprint": {
+        "description": "Title of the entry showing the key fingerprint",
+        "context": "Identities screen, identity details sheet"
+    },
+    "identityPassphraseStored": "Passphrase is stored",
+    "@identityPassphraseStored": {
+        "description": "Status shown when the passphrase of the key is stored on the device",
+        "context": "Identities screen, identity details sheet"
+    },
+    "identityPassphraseNotStored": "Passphrase is not stored",
+    "@identityPassphraseNotStored": {
+        "description": "Status shown when the passphrase of the key is not stored on the device",
+        "context": "Identities screen, identity details sheet"
+    },
+    "identityPassphraseLoading": "Loading passphrase status...",
+    "@identityPassphraseLoading": {
+        "description": "Status shown while it is still being determined whether the passphrase is stored",
+        "context": "Identities screen, identity details sheet"
+    },
+    "identityActionsHeadline": "Actions",
+    "@identityActionsHeadline": {
+        "description": "Headline of the section listing the actions available for an identity key",
+        "context": "Identities screen, identity details sheet"
+    },
+    "identityDeleteKey": "Delete key",
+    "@identityDeleteKey": {
+        "description": "Title of the action that deletes the key and its stored passphrase",
+        "context": "Identities screen, identity details sheet, action"
+    },
+    "identityDeleteStoredPassphrase": "Delete stored passphrase",
+    "@identityDeleteStoredPassphrase": {
+        "description": "Title of the action that deletes only the stored passphrase of the key",
+        "context": "Identities screen, identity details sheet, action"
     },
     "settingsHkpKeyServers": "HKP key servers",
     "@settingsHkpKeyServers": {

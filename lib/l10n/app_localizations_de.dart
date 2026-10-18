@@ -65,9 +65,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get restartTransaction => 'Transaktion neu starten';
 
   @override
-  String get generateKeys => 'Schlüssel generieren';
-
-  @override
   String get grantPermissions => 'Berechtigungen erteilen';
 
   @override
@@ -139,7 +136,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get addContactSourceFile => 'Aus Datei importieren';
 
   @override
-  String get addIdentitySourceCreate => 'Neuen erstellen';
+  String get addIdentitySourceCreate => 'Neue erstellen';
 
   @override
   String get passphraseInputWrong => 'Falsche Passphrase.';
@@ -155,10 +152,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get passphraseInputLabel => 'Passphrase';
-
-  @override
-  String get passphraseInputHelper =>
-      'Die Passphrase, die du beim Erstellen der Identität eingegeben hast. Achte darauf, dass sie exakt übereinstimmt.';
 
   @override
   String get passphraseInputRemember => 'Im Tresor merken';
@@ -186,10 +179,6 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get addIdentityClipboardReadKey =>
-      'Schlüssel aus der Zwischenablage gelesen.';
-
-  @override
   String get addContactFileImport => 'Importieren';
 
   @override
@@ -203,9 +192,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String addContactFileReadKeys(int count) {
     return '$count Schlüssel aus der Datei gelesen.';
   }
-
-  @override
-  String get addIdentityFileReadKey => 'Schlüssel aus der Datei gelesen.';
 
   @override
   String get addContactSearchLabel => 'E-Mail-Adresse / Identität';
@@ -294,6 +280,49 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get identitiesEmpty =>
       'Noch keine Identitäten.\nErstelle gleich eine!';
+
+  @override
+  String get identityDetailsHeadline => 'Details';
+
+  @override
+  String get identityCreation => 'Erstellung';
+
+  @override
+  String get identityExpiration => 'Ablauf';
+
+  @override
+  String get identityExpirationNever => 'Nie';
+
+  @override
+  String get identityKeyStrength => 'Schlüsselstärke';
+
+  @override
+  String get identityKeyVersion => 'Schlüsselversion';
+
+  @override
+  String get identityKeyId => 'Schlüssel-ID';
+
+  @override
+  String get identityFingerprint => 'Fingerabdruck';
+
+  @override
+  String get identityPassphraseStored => 'Passphrase ist gespeichert';
+
+  @override
+  String get identityPassphraseNotStored => 'Passphrase ist nicht gespeichert';
+
+  @override
+  String get identityPassphraseLoading => 'Passphrase-Status wird geladen...';
+
+  @override
+  String get identityActionsHeadline => 'Aktionen';
+
+  @override
+  String get identityDeleteKey => 'Schlüssel löschen';
+
+  @override
+  String get identityDeleteStoredPassphrase =>
+      'Gespeicherte Passphrase löschen';
 
   @override
   String get settingsHkpKeyServers => 'HKP-Schlüsselserver';

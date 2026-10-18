@@ -3,13 +3,17 @@ import 'dart:async';
 import 'package:material_graphics/material_graphics.dart';
 import 'package:material_helper/material_helper.dart';
 import 'package:material_ui/material_ui.dart' hide Key;
+import 'package:mobile/components/identity_tile.dart';
 import 'package:mobile/components/step_by_step_guide_dialog.dart';
 import 'package:mobile/database/key_store.dart';
 import 'package:mobile/l10n/app_localizations.dart';
-import 'package:mobile/screens/screen_run.dart';
+import 'package:shared/shared.dart';
 
 class ScreenIdentities extends StatefulWidget {
-  const new({super.key});
+  final void Function(int id, String display, String fingerprint)
+  onIdentitySelected;
+
+  const new({super.key, required this.onIdentitySelected});
 
   @override
   State<ScreenIdentities> createState() => _ScreenIdentitiesState();
@@ -21,6 +25,7 @@ class _ScreenIdentitiesState extends State<ScreenIdentities> {
   StreamSubscription<List<Key>>? _keySubscription;
 
   bool _loading = false;
+  bool _dataLoaded = false;
   KeyStore? get _keyStore => KeyStoreHandler.instance.keyStore;
 
   @override
@@ -42,7 +47,14 @@ class _ScreenIdentitiesState extends State<ScreenIdentities> {
   }
 
   void _dataLoaderInit() {
-    if (_keyStore == null) return;
+    if (_keyStore == null) {
+      _keySubscription?.cancel();
+      _keySubscription = null;
+      _dataLoaded = false;
+      if (mounted) setState(() {});
+      return;
+    }
+    _keySubscription?.cancel();
     _keySubscription = _keyStore!
         .select(_keyStore!.keys)
         .watch()
@@ -52,7 +64,6 @@ class _ScreenIdentitiesState extends State<ScreenIdentities> {
 
   Future<void> _loadData(List<Key> newData) async {
     if (_keyStore == null) return;
-    final newData = await _keyStore!.select(_keyStore!.keys).get();
     final newDataIds = newData.map((key) => key.id).toSet();
     final newKeyUserIds = await (_keyStore!.select(
       _keyStore!.keyUserIds,
@@ -63,6 +74,7 @@ class _ScreenIdentitiesState extends State<ScreenIdentities> {
     _keyUserIds
       ..clear()
       ..addAll(newKeyUserIds);
+    _dataLoaded = true;
     if (mounted) setState(() {});
   }
 
@@ -78,7 +90,6 @@ class _ScreenIdentitiesState extends State<ScreenIdentities> {
       animationStyle: .all,
       builder: (context) {
         if (_keyStore == null) {
-          // Returning null makes the widget show its loading indicator.
           if (!KeyStoreHandler.instance.isLocked || _loading) return null;
           return SizedBox.expand(
             child: GestureDetector(
@@ -119,6 +130,8 @@ class _ScreenIdentitiesState extends State<ScreenIdentities> {
           );
         }
 
+        if (!_dataLoaded) return null;
+
         if (_keys.isEmpty) {
           return Center(
             child: Text(
@@ -137,30 +150,31 @@ class _ScreenIdentitiesState extends State<ScreenIdentities> {
                 final userIds = _keyUserIds
                     .where((c) => c.parent == key.id)
                     .toList();
-                return MaterialListTile(
-                  title: Text(
-                    "${userIds.first.name ?? "–"} (${userIds.first.email})",
-                  ),
-                  subtitle: Builder(
-                    builder: (context) => Text(
-                      formatFingerprint(key.fingerprint),
-                      style: DefaultTextStyle.of(context).style.googleSansCode,
-                    ),
-                  ),
-                  isThreeLine: true,
-                  onLongPress: () {
-                    final keyStore = KeyStoreHandler.instance.keyStore!;
-                    keyStore.transaction(() async {
-                      await (keyStore.delete(
-                        keyStore.keys,
-                      )..where((c) => c.id.equals(key.id))).go();
-                      await (keyStore.delete(
-                        keyStore.keyUserIds,
-                      )..where((c) => c.parent.equals(key.id))).go();
-                      await KeyStoreHandler.instance.deleteKeyPassphrase(
-                        key.fingerprint,
-                      );
-                    });
+                return IdentityTile(
+                  key: ValueKey(key.id),
+                  keyData: key,
+                  userIds: userIds,
+                  onTap: () {
+                    widget.onIdentitySelected(
+                      key.id,
+                      userIds
+                          .map(
+                            (u) => UserId(
+                              name: u.name,
+                              comment: u.comment,
+                              email: u.email,
+                            ).toString(),
+                          )
+                          .join(","),
+                      key.fingerprint
+                          .map(
+                            (b) => b
+                                .toRadixString(16)
+                                .padLeft(2, "0")
+                                .toUpperCase(),
+                          )
+                          .join(),
+                    );
                   },
                 );
               }).toList(),

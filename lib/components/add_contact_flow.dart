@@ -24,6 +24,10 @@ String? _tryDecodeUtf8(Uint8List input) {
   }
 }
 
+final _armoredPublicKeyBlock = RegExp(
+  r"-----BEGIN PGP PUBLIC KEY BLOCK-----[\s\S]*?-----END PGP PUBLIC KEY BLOCK-----",
+);
+
 String _keyStateDigest(PublicKey key) {
   final users =
       key.users
@@ -67,6 +71,12 @@ class _ContactSourceChooserState extends State<_ContactSourceChooser> {
   List<PublicKey> _primarySearchResult = const [];
   Map<Uint8List, PublicKey?> _parsedResultKeys = const {};
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void _processSelection(String source) async {
     if (_loadMode) return;
     _loadMode = true;
@@ -103,22 +113,28 @@ class _ContactSourceChooserState extends State<_ContactSourceChooser> {
               .replaceAll("\r\n", "\n")
               .replaceAll("\r", "\n")
               .trim();
-          keys = OpenPGP.readPublicKeys(normalized)
-              .map((key) => key.publicKey.packetList.encode())
-              .toList();
+          keys = [
+            for (final match in _armoredPublicKeyBlock.allMatches(normalized))
+              ...OpenPGP.readPublicKeys(match.group(0)!)
+                  .map((key) => key.publicKey.packetList.encode()),
+          ];
         } else {
           final packetList = PacketList.decode(input);
-          final indexes = packetList.indexOfTypes([PacketType.publicKey]);
+          final starts = packetList.indexOfTypes([
+            PacketType.publicKey,
+            PacketType.secretKey,
+          ]);
           keys = [
-            for (var i = 0; i < indexes.length; i++)
-              PublicKey(
-                PacketList(
-                  packetList.packets.sublist(
-                    indexes[i],
-                    i + 1 < indexes.length ? indexes[i + 1] : packetList.length,
+            for (var i = 0; i < starts.length; i++)
+              if (packetList.packets[starts[i]].type == PacketType.publicKey)
+                PublicKey(
+                  PacketList(
+                    packetList.packets.sublist(
+                      starts[i],
+                      i + 1 < starts.length ? starts[i + 1] : packetList.length,
+                    ),
                   ),
-                ),
-              ).packetList.encode(),
+                ).packetList.encode(),
           ];
         }
         keys.removeWhere(
@@ -344,9 +360,6 @@ class _ContactSourceChooserState extends State<_ContactSourceChooser> {
                 .toList();
             final isNotInPrimary =
                 primarySearchResult.isNotEmpty && matchingPrimaries.isEmpty;
-            // Raw bytes legitimately differ between origins (signature
-            // order, third-party signatures, ...), so compare the key's
-            // effective state instead.
             final differsFromPrimary =
                 !isPrimary &&
                 resultKey != null &&

@@ -16,6 +16,7 @@ import 'components/protocol_manager_builder.dart';
 import 'components/protocol_permission_builder.dart';
 import 'screens/screen_contacts.dart';
 import 'screens/screen_run.dart';
+import 'database/key_store.dart' as key_store;
 
 Hyphenator? hyphenator;
 String? hyphenatorLanguage;
@@ -26,6 +27,8 @@ String hyphenate(String text) {
 }
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Preferences.init();
   materialAppsFallbackColor = Colors.teal;
   runApp(const MainApp());
 }
@@ -41,9 +44,6 @@ class _MainAppState extends State<MainApp> {
   @override
   void initState() {
     super.initState();
-    Preferences.init().then((_) {
-      if (mounted) setState(() {});
-    });
   }
 
   @override
@@ -92,6 +92,10 @@ class _MainScreenState extends State<MainScreen>
   bool _navigationBlocked = false;
   late final AnimationController _navigationBlockingController;
 
+  int? _selectedKey;
+  String? _selectedKeyUserIdDisplay;
+  String? _selectedKeyFingerprint;
+
   @override
   void initState() {
     super.initState();
@@ -101,6 +105,9 @@ class _MainScreenState extends State<MainScreen>
       vsync: this,
       duration: ExpressiveCurves.expressiveEffects.slowDuration,
     );
+
+    _selectedKey = prefs!.getInt("selectedKey");
+    _selectedKeyUserIdDisplay = prefs!.getString("selectedKeyUserId");
   }
 
   @override
@@ -140,8 +147,28 @@ class _MainScreenState extends State<MainScreen>
           final runBody = ScreenRun(
             permissions: permissions,
             protocol: protocol,
+            selectedKey: _selectedKey,
+            selectedKeyUserIdDisplay: _selectedKeyUserIdDisplay,
+            selectedKeyFingerprint: _selectedKeyFingerprint,
           );
-          final identitiesBody = ScreenIdentities();
+          final identitiesBody = ScreenIdentities(
+            onIdentitySelected: (id, display, fingerprint) {
+              _selectedKey = id;
+              _selectedKeyUserIdDisplay = display;
+              _selectedKeyFingerprint = fingerprint;
+              prefs!.setInt("selectedKey", id);
+              prefs!.setString("selectedKeyUserId", display);
+              prefs!.setString("selectedKeyFingerprint", fingerprint);
+
+              _currentPage = 1;
+              if (mounted) setState(() {});
+              _pageController.animateToPage(
+                _currentPage,
+                duration: ExpressiveCurves.expressiveSpatial.normalDuration,
+                curve: ExpressiveCurves.expressiveSpatial.normal,
+              );
+            },
+          );
 
           final body = TweenAnimationBuilder<ColorScheme>(
             tween: ColorSchemeTween(
@@ -265,30 +292,33 @@ class _MainScreenState extends State<MainScreen>
                           case 2:
                             final keys = await startAddIdentityFlow(context);
                             if (keys == null) return;
-                            final (publicKey, privateKey, passphrase) = keys;
                             final keyStore = KeyStoreHandler.instance.keyStore;
                             if (keyStore == null) return;
-                            final key = publicKeyFromBytes(publicKey);
-                            if (await (keyStore.select(keyStore.keys)..where(
-                                  (k) => k.fingerprint.equals(key.fingerprint),
-                                ))
-                                .get()
-                                .then((value) => value.isNotEmpty)) {
-                              return;
-                            }
-                            await keyStore.insertKey(
-                              KeysCompanion.insert(
-                                fingerprint: key.fingerprint,
-                                publicData: publicKey,
-                                privateData: privateKey,
-                              ),
-                              key.users.map((user) => user.userID).toList(),
-                            );
-                            if (passphrase != null) {
-                              await KeyStoreHandler.instance.setKeyPassphrase(
-                                key.fingerprint,
-                                passphrase,
+                            for (final (publicKey, privateKey, passphrase)
+                                in keys) {
+                              final key = publicKeyFromBytes(publicKey);
+                              if (await (keyStore.select(keyStore.keys)..where(
+                                    (k) =>
+                                        k.fingerprint.equals(key.fingerprint),
+                                  ))
+                                  .get()
+                                  .then((value) => value.isNotEmpty)) {
+                                continue;
+                              }
+                              await keyStore.insertKey(
+                                KeysCompanion.insert(
+                                  fingerprint: key.fingerprint,
+                                  publicData: publicKey,
+                                  privateData: privateKey,
+                                ),
+                                key.users.map((user) => user.userID).toList(),
                               );
+                              if (passphrase != null) {
+                                await KeyStoreHandler.instance.setKeyPassphrase(
+                                  key.fingerprint,
+                                  passphrase,
+                                );
+                              }
                             }
                         }
                       },

@@ -1051,9 +1051,11 @@ packages:
   shared:
     dependency: "direct main"
     description:
-      path: "C:/Users/jakob/Documents/GitHub/shared"
-      relative: false
-    source: path
+      path: "."
+      ref: HEAD
+      resolved-ref: "887c9e23c71464a427ea41176f7e64e9bfec4717"
+      url: "https://github.com/PGPtouch/shared.git"
+    source: git
     version: "0.0.0"
   shared_preferences:
     dependency: transitive

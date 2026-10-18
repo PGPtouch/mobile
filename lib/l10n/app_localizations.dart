@@ -188,12 +188,6 @@ abstract class AppLocalizations {
   /// **'Restart transaction'**
   String get restartTransaction;
 
-  /// Button label to generate a new PGP key pair
-  ///
-  /// In en, this message translates to:
-  /// **'Generate keys'**
-  String get generateKeys;
-
   /// Button label to request the required Bluetooth or location permissions
   ///
   /// In en, this message translates to:
@@ -356,12 +350,6 @@ abstract class AppLocalizations {
   /// **'Passphrase'**
   String get passphraseInputLabel;
 
-  /// Helper text below the passphrase text field
-  ///
-  /// In en, this message translates to:
-  /// **'This is the passphrase you entered while creating the identity. Make sure it matches exactly.'**
-  String get passphraseInputHelper;
-
   /// Title of the checkbox that stores the passphrase in the vault
   ///
   /// In en, this message translates to:
@@ -404,12 +392,6 @@ abstract class AppLocalizations {
   /// **'Read {count, plural, one{{count} key} other{{count} keys}} from clipboard.'**
   String addContactClipboardReadKeys(int count);
 
-  /// Message shown after the identity key was successfully read from the clipboard
-  ///
-  /// In en, this message translates to:
-  /// **'Read key from clipboard.'**
-  String get addIdentityClipboardReadKey;
-
   /// Confirm button label of the file picker used to import public keys
   ///
   /// In en, this message translates to:
@@ -433,12 +415,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Read {count, plural, one{{count} key} other{{count} keys}} from file.'**
   String addContactFileReadKeys(int count);
-
-  /// Message shown after the identity key was successfully read from a file
-  ///
-  /// In en, this message translates to:
-  /// **'Read key from file.'**
-  String get addIdentityFileReadKey;
 
   /// Label of the text field used to search for a contact's public key online
   ///
@@ -583,6 +559,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No identities yet.\nStart by creating one!'**
   String get identitiesEmpty;
+
+  /// Headline of the section listing the properties of an identity key
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get identityDetailsHeadline;
+
+  /// Title of the entry showing when the key was created
+  ///
+  /// In en, this message translates to:
+  /// **'Creation'**
+  String get identityCreation;
+
+  /// Title of the entry showing when the key expires
+  ///
+  /// In en, this message translates to:
+  /// **'Expiration'**
+  String get identityExpiration;
+
+  /// Value shown as expiration date when the key does not expire
+  ///
+  /// In en, this message translates to:
+  /// **'Never'**
+  String get identityExpirationNever;
+
+  /// Title of the entry showing the strength of the key
+  ///
+  /// In en, this message translates to:
+  /// **'Key strength'**
+  String get identityKeyStrength;
+
+  /// Title of the entry showing the OpenPGP version of the key
+  ///
+  /// In en, this message translates to:
+  /// **'Key version'**
+  String get identityKeyVersion;
+
+  /// Title of the entry showing the key ID
+  ///
+  /// In en, this message translates to:
+  /// **'Key ID'**
+  String get identityKeyId;
+
+  /// Title of the entry showing the key fingerprint
+  ///
+  /// In en, this message translates to:
+  /// **'Fingerprint'**
+  String get identityFingerprint;
+
+  /// Status shown when the passphrase of the key is stored on the device
+  ///
+  /// In en, this message translates to:
+  /// **'Passphrase is stored'**
+  String get identityPassphraseStored;
+
+  /// Status shown when the passphrase of the key is not stored on the device
+  ///
+  /// In en, this message translates to:
+  /// **'Passphrase is not stored'**
+  String get identityPassphraseNotStored;
+
+  /// Status shown while it is still being determined whether the passphrase is stored
+  ///
+  /// In en, this message translates to:
+  /// **'Loading passphrase status...'**
+  String get identityPassphraseLoading;
+
+  /// Headline of the section listing the actions available for an identity key
+  ///
+  /// In en, this message translates to:
+  /// **'Actions'**
+  String get identityActionsHeadline;
+
+  /// Title of the action that deletes the key and its stored passphrase
+  ///
+  /// In en, this message translates to:
+  /// **'Delete key'**
+  String get identityDeleteKey;
+
+  /// Title of the action that deletes only the stored passphrase of the key
+  ///
+  /// In en, this message translates to:
+  /// **'Delete stored passphrase'**
+  String get identityDeleteStoredPassphrase;
 
   /// Title of the setting that selects which HKP key servers are used to search for public keys
   ///
