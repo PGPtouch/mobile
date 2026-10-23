@@ -1,11 +1,10 @@
 import 'dart:async';
 
-import 'package:material_graphics/material_graphics.dart';
 import 'package:material_helper/material_helper.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:mobile/components/identity_tile.dart';
 import 'package:mobile/database/contact_store.dart';
 import 'package:mobile/l10n/app_localizations.dart';
-import 'package:mobile/screens/screen_run.dart';
 
 var contactStore = ContactStore();
 
@@ -81,26 +80,10 @@ class _ScreenContactsState extends State<ScreenContacts> {
                 final userIds = _contactUserIds
                     .where((c) => c.parent == contact.id)
                     .toList();
-                return MaterialListTile(
-                  title: Text(
-                    "${contact.displayName ?? ""}\n${userIds.first.name ?? "–"} (${userIds.first.email})"
-                        .trim(),
-                  ),
-                  subtitle: Builder(
-                    builder: (context) => Text(
-                      formatFingerprint(contact.fingerprint),
-                      style: DefaultTextStyle.of(context).style.googleSansCode,
-                    ),
-                  ),
-                  isThreeLine: true,
-                  onLongPress: () => contactStore.transaction(() async {
-                    await (contactStore.delete(
-                      contactStore.contacts,
-                    )..where((c) => c.id.equals(contact.id))).go();
-                    await (contactStore.delete(
-                      contactStore.contactUserIds,
-                    )..where((c) => c.parent.equals(contact.id))).go();
-                  }),
+                return IdentityTile(
+                  key: ValueKey(contact.id),
+                  keyData: .new(contact),
+                  userIds: userIds.toInterchangeable(),
                 );
               }).toList(),
             ),

@@ -1,3 +1,4 @@
+import 'package:flutter/rendering.dart';
 import 'package:hyphenatorx/hyphenatorx.dart';
 import 'package:material_helper/material_helper.dart';
 import 'package:material_graphics/material_graphics.dart';
@@ -5,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:mobile/components/add_contact_flow.dart';
 import 'package:mobile/components/add_identity_flow.dart';
 import 'package:mobile/components/step_by_step_guide_dialog.dart';
+import 'package:mobile/components/two_state_widget.dart';
 import 'package:mobile/database/contact_store.dart';
 import 'package:mobile/database/key_store.dart';
 import 'package:mobile/l10n/app_localizations.dart';
@@ -16,7 +18,6 @@ import 'components/protocol_manager_builder.dart';
 import 'components/protocol_permission_builder.dart';
 import 'screens/screen_contacts.dart';
 import 'screens/screen_run.dart';
-import 'database/key_store.dart' as key_store;
 
 Hyphenator? hyphenator;
 String? hyphenatorLanguage;
@@ -108,6 +109,7 @@ class _MainScreenState extends State<MainScreen>
 
     _selectedKey = prefs!.getInt("selectedKey");
     _selectedKeyUserIdDisplay = prefs!.getString("selectedKeyUserId");
+    _selectedKeyFingerprint = prefs!.getString("selectedKeyFingerprint");
   }
 
   @override
@@ -168,6 +170,16 @@ class _MainScreenState extends State<MainScreen>
                 curve: ExpressiveCurves.expressiveSpatial.normal,
               );
             },
+            onIdentityDeleted: (id) {
+              if (_selectedKey == id) {
+                _selectedKey = null;
+                _selectedKeyUserIdDisplay = null;
+                _selectedKeyFingerprint = null;
+                prefs!.remove("selectedKey");
+                prefs!.remove("selectedKeyUserId");
+                prefs!.remove("selectedKeyFingerprint");
+              }
+            },
           );
 
           final body = TweenAnimationBuilder<ColorScheme>(
@@ -178,10 +190,6 @@ class _MainScreenState extends State<MainScreen>
                   .initializing => Colors.yellow,
                   .tapOther => Colors.purple,
                   .holdOther => Colors.cyan,
-                  .done =>
-                    result?.value?.mode == .success
-                        ? Colors.green
-                        : Colors.redAccent,
                   _ => null,
                 };
                 final current = ColorScheme.of(context);
@@ -245,9 +253,11 @@ class _MainScreenState extends State<MainScreen>
                     tooltip: KeyStoreHandler.instance.isLocked
                         ? AppLocalizations.of(context).appBarUnlockTooltip
                         : AppLocalizations.of(context).appBarUnlockedTooltip,
-                    icon: KeyStoreHandler.instance.isLocked
-                        ? Icon(Icons.lock)
-                        : Icon(Icons.lock_open),
+                    icon: TwoStateWidgetManaged(
+                      state: !KeyStoreHandler.instance.isLocked,
+                      from: Icon(Icons.lock),
+                      to: Icon(Icons.lock_open),
+                    ),
                   ),
                   IconButton(
                     onPressed: () {
@@ -404,6 +414,8 @@ class _MainScreenState extends State<MainScreen>
                 physics: _navigationBlocked
                     ? NeverScrollableScrollPhysics()
                     : null,
+                scrollCacheExtent: ScrollCacheExtent.viewport(10),
+                allowImplicitScrolling: true,
                 children: [
                   contactsBody,
                   Theme(

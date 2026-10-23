@@ -8,8 +8,7 @@ void main() {
       final error = PlatformException(
         code: 'Exception encountered',
         message: 'Key mismatch after algorithm change (Invalid key)',
-        details:
-            'Caused by: android.security.keystore.UserNotAuthenticatedException: User not authenticated',
+        details: 'Caused by: android.security.keystore.UserNotAuthenticatedException: User not authenticated',
       );
       expect(isDeviceReauthRequired(error), isTrue);
     });

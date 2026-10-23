@@ -224,18 +224,6 @@ abstract class AppLocalizations {
   /// **'Bluetooth is not available on this device.'**
   String get bluetoothNotAvailable;
 
-  /// Title of the warning shown when Android's Tap to share could not be blocked
-  ///
-  /// In en, this message translates to:
-  /// **'Tap to share is interfering'**
-  String get tapToShareInterferingTitle;
-
-  /// Explanation and instructions for the warning shown when Android's Tap to share could not be blocked
-  ///
-  /// In en, this message translates to:
-  /// **'Android’s Tap to share could not be blocked. Turn it off in Settings > Google > Quick Share > Tap to share, or taps may open the contact-share popup.'**
-  String get tapToShareInterferingMessage;
-
   /// Label of the navigation bar destination for the contacts list
   ///
   /// In en, this message translates to:
@@ -620,11 +608,23 @@ abstract class AppLocalizations {
   /// **'Passphrase is not stored'**
   String get identityPassphraseNotStored;
 
-  /// Status shown while it is still being determined whether the passphrase is stored
+  /// Placeholder shown when a value (e.g. name, date, key detail) is not available
   ///
   /// In en, this message translates to:
-  /// **'Loading passphrase status...'**
-  String get identityPassphraseLoading;
+  /// **'–'**
+  String get valueMissing;
+
+  /// Optional comment of an identity, shown in parentheses next to its name
+  ///
+  /// In en, this message translates to:
+  /// **'({comment})'**
+  String identityComment(String comment);
+
+  /// Short badge shown on an identity tile when its passphrase is stored on the device
+  ///
+  /// In en, this message translates to:
+  /// **'Remembered'**
+  String get identityPassphraseRemembered;
 
   /// Headline of the section listing the actions available for an identity key
   ///

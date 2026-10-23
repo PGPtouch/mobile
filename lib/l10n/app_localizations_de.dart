@@ -84,13 +84,6 @@ class AppLocalizationsDe extends AppLocalizations {
       'Bluetooth ist auf diesem Gerät nicht verfügbar.';
 
   @override
-  String get tapToShareInterferingTitle => '„Tap to share“ stört';
-
-  @override
-  String get tapToShareInterferingMessage =>
-      'Androids „Tap to share“ konnte nicht blockiert werden. Deaktiviere es unter Einstellungen > Google > Quick Share > Tap to share, da Antippen sonst das Popup zum Teilen von Kontakten öffnen kann.';
-
-  @override
   String get navContacts => 'Kontakte';
 
   @override
@@ -175,7 +168,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String addContactClipboardReadKeys(int count) {
-    return '$count Schlüssel aus der Zwischenablage gelesen.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Schlüssel',
+      one: '$count Schlüssel',
+    );
+    return '$_temp0 aus der Zwischenablage gelesen.';
   }
 
   @override
@@ -190,7 +189,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String addContactFileReadKeys(int count) {
-    return '$count Schlüssel aus der Datei gelesen.';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Schlüssel',
+      one: '$count Schlüssel',
+    );
+    return '$_temp0 aus der Datei gelesen.';
   }
 
   @override
@@ -312,7 +317,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get identityPassphraseNotStored => 'Passphrase ist nicht gespeichert';
 
   @override
-  String get identityPassphraseLoading => 'Passphrase-Status wird geladen...';
+  String get valueMissing => '–';
+
+  @override
+  String identityComment(String comment) {
+    return '($comment)';
+  }
+
+  @override
+  String get identityPassphraseRemembered => 'Gemerkt';
 
   @override
   String get identityActionsHeadline => 'Aktionen';

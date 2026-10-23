@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:shared/shared.dart';
@@ -12,22 +11,9 @@ class ProtocolManagerState {
   final DisplayState? displayState;
   final NfcAntennaLocations? nfcAntennaLocations;
 
-  final Future<void> Function(
-    Uint8List pgpPublicKey,
-    Uint8List pgpPrivateKey, {
-    String? privateKeyPassphrase,
-  })
-  _start;
+  final Future<void> Function(PgpProvider pgpProvider) _start;
   final Future<void> Function() _stop;
-  Future<void> start(
-    Uint8List pgpPublicKey,
-    Uint8List pgpPrivateKey, {
-    String? privateKeyPassphrase,
-  }) => _start.call(
-    pgpPublicKey,
-    pgpPrivateKey,
-    privateKeyPassphrase: privateKeyPassphrase,
-  );
+  Future<void> start(PgpProvider pgpProvider) => _start.call(pgpProvider);
   Future<void> stop() => _stop.call();
 
   const ProtocolManagerState({
@@ -111,11 +97,7 @@ class _ProtocolManagerBuilderState extends State<ProtocolManagerBuilder>
     widget.onDone?.call();
   }
 
-  Future<void> _startProtocolManager(
-    Uint8List pgpPublicKey,
-    Uint8List pgpPrivateKey, {
-    String? privateKeyPassphrase,
-  }) async {
+  Future<void> _startProtocolManager(PgpProvider pgpProvider) async {
     await _protocolManager?.close();
     NfcHaptics.instance.reset();
     final nfcSender = NfcSender();
@@ -143,13 +125,10 @@ class _ProtocolManagerBuilderState extends State<ProtocolManagerBuilder>
 
     try {
       widget.onStart?.call();
-      await _protocolManager!.start(
-        LocalPgpProvider(pgpPublicKey, pgpPrivateKey),
-        privateKeyPassphrase: privateKeyPassphrase,
-      );
+      await _protocolManager!.start(pgpProvider, privateKeyPassphrase: "");
     } catch (e, st) {
       log("ProtocolManager", "start failed: $e\n$st");
-      rethrow;
+      await _stopProtocolManager();
     }
   }
 

@@ -6,8 +6,10 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show PlatformException;
+import 'package:flutter/widgets.dart' show BuildContext;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:material_helper/material_helper.dart';
+import 'package:mobile/components/passphrase_input.dart';
 import 'package:mobile/l10n/app_localizations.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared/shared.dart';
@@ -260,31 +262,53 @@ final class KeyStoreHandler extends ChangeNotifier {
   }
 }
 
+/// A [PgpProvider] that lazily unlocks [KeyStoreHandler.instance], reads the
+/// key with [id] from it, and resolves its private key passphrase.
+///
+/// If the key's private key is encrypted, [tryDecryptPrivateKey] first tries
+/// the passphrase remembered for it (if any) and, failing that, prompts the
+/// user for one via [showPassphraseInputDialog] using [context]. This means
+/// the passphrase dialog is also shown on top of the "initializing" state.
 class KeyStorePgpProvider extends PgpProvider {
-  final KeyStore _store;
+  final BuildContext context;
+  final AppLocalizations appLocalizations;
   final int id;
   final String? email;
 
+  KeyStorePgpProvider(
+    this.context,
+    this.appLocalizations, {
+    required this.id,
+    this.email,
+  });
+
+  Key? _key;
   LocalPgpProvider? _internal;
+  LocalPgpProvider? _unlocked;
+
   Future<LocalPgpProvider> _getInternal() async {
     if (_internal != null) return _internal!;
-    final key = await (_store.select(
-      _store.keys,
+    final unlock = await KeyStoreHandler.instance.unlock(appLocalizations);
+    if (unlock != UnlockResult.unlocked) {
+      throw StateError("Key store could not be unlocked: $unlock");
+    }
+    final store = KeyStoreHandler.instance.keyStore!;
+    final key = await (store.select(
+      store.keys,
     )..where((k) => k.id.equals(id))).getSingleOrNull();
     if (key == null) {
       throw StateError("Key not found for id $id");
     }
     if (email != null &&
-        !(await key.getUserIds(_store)).any((u) => u.email == email)) {
+        !(await key.getUserIds(store)).any((u) => u.email == email)) {
       throw StateError(
         "User ID with email $email not found for key $id, cross check failed",
       );
     }
+    _key = key;
     _internal = LocalPgpProvider(key.publicData, key.privateData);
     return _internal!;
   }
-
-  KeyStorePgpProvider(this._store, {required this.id, this.email});
 
   @override
   Future<Uint8List> getPublicKey() async =>
@@ -295,17 +319,72 @@ class KeyStorePgpProvider extends PgpProvider {
       (await _getInternal()).isPrivateKeyEncrypted();
 
   @override
-  Future<bool> tryDecryptPrivateKey(String privateKeyPassphrase) async =>
-      (await _getInternal()).tryDecryptPrivateKey(privateKeyPassphrase);
+  Future<bool> tryDecryptPrivateKey(String privateKeyPassphrase) async {
+    await _getInternal();
+    final key = _key!;
+
+    if (!await isPrivateKeyEncrypted()) return true;
+
+    final storedPassphrase = await KeyStoreHandler.instance.getKeyPassphrase(
+      key.fingerprint,
+    );
+    if (storedPassphrase != null && await _unlock(key, storedPassphrase)) {
+      return true;
+    }
+
+    final userIds = await key.getUserIds(KeyStoreHandler.instance.keyStore!);
+    if (!context.mounted) return false;
+    final result = await showPassphraseInputDialog(
+      context,
+      identity: userIds
+          .map(
+            (u) => UserId(
+              name: u.name,
+              comment: u.comment,
+              email: u.email,
+            ).toString(),
+          )
+          .toList(),
+      fingerprint: key.fingerprint,
+      validate: (passphrase) async {
+        final decrypted = await _unlock(key, passphrase);
+        return decrypted ? null : appLocalizations.passphraseInputWrong;
+      },
+    );
+    if (result == null) return false;
+    if (result.remember) {
+      await KeyStoreHandler.instance.setKeyPassphrase(
+        key.fingerprint,
+        result.passphrase,
+      );
+    }
+    return true;
+  }
+
+  Future<bool> _unlock(Key key, String passphrase) async {
+    final decrypted = await decryptPrivateKey(key.privateData, passphrase);
+    if (decrypted == null) return false;
+    _unlocked?.destroy();
+    _unlocked = LocalPgpProvider(key.publicData, decrypted);
+    return true;
+  }
 
   @override
   Future<Uint8List> signToDetached(
     Uint8List data,
     String? privateKeyPassphrase,
-  ) async => (await _getInternal()).signToDetached(data, privateKeyPassphrase);
+  ) async => (_unlocked ?? await _getInternal()).signToDetached(
+    data,
+    privateKeyPassphrase,
+  );
 
   @override
-  void destroy() => _internal?.destroy();
+  void destroy() {
+    _internal?.destroy();
+    _unlocked?.destroy();
+    _unlocked = null;
+    _key = null;
+  }
 
   @override
   String toString() => "KeyStorePgpProvider(internal: $_internal)";

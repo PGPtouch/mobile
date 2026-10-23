@@ -84,13 +84,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Bluetooth is not available on this device.';
 
   @override
-  String get tapToShareInterferingTitle => 'Tap to share is interfering';
-
-  @override
-  String get tapToShareInterferingMessage =>
-      'Android’s Tap to share could not be blocked. Turn it off in Settings > Google > Quick Share > Tap to share, or taps may open the contact-share popup.';
-
-  @override
   String get navContacts => 'Contacts';
 
   @override
@@ -320,7 +313,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get identityPassphraseNotStored => 'Passphrase is not stored';
 
   @override
-  String get identityPassphraseLoading => 'Loading passphrase status...';
+  String get valueMissing => '–';
+
+  @override
+  String identityComment(String comment) {
+    return '($comment)';
+  }
+
+  @override
+  String get identityPassphraseRemembered => 'Remembered';
 
   @override
   String get identityActionsHeadline => 'Actions';

@@ -130,16 +130,6 @@
         "description": "Message shown when the device has no Bluetooth hardware",
         "context": "Main screen, availability messages"
     },
-    "tapToShareInterferingTitle": "Tap to share is interfering",
-    "@tapToShareInterferingTitle": {
-        "description": "Title of the warning shown when Android's Tap to share could not be blocked",
-        "context": "Main screen, bottom warning banner"
-    },
-    "tapToShareInterferingMessage": "Android’s Tap to share could not be blocked. Turn it off in Settings > Google > Quick Share > Tap to share, or taps may open the contact-share popup.",
-    "@tapToShareInterferingMessage": {
-        "description": "Explanation and instructions for the warning shown when Android's Tap to share could not be blocked",
-        "context": "Main screen, bottom warning banner"
-    },
     "navContacts": "Contacts",
     "@navContacts": {
         "description": "Label of the navigation bar destination for the contacts list",
@@ -480,10 +470,26 @@
         "description": "Status shown when the passphrase of the key is not stored on the device",
         "context": "Identities screen, identity details sheet"
     },
-    "identityPassphraseLoading": "Loading passphrase status...",
-    "@identityPassphraseLoading": {
-        "description": "Status shown while it is still being determined whether the passphrase is stored",
-        "context": "Identities screen, identity details sheet"
+    "valueMissing": "–",
+    "@valueMissing": {
+        "description": "Placeholder shown when a value (e.g. name, date, key detail) is not available",
+        "context": "Identities screen, identity tile and identity details sheet"
+    },
+    "identityComment": "({comment})",
+    "@identityComment": {
+        "description": "Optional comment of an identity, shown in parentheses next to its name",
+        "context": "Identity tile and identity details sheet",
+        "placeholders": {
+            "comment": {
+                "type": "String",
+                "description": "The comment stored in the identity's user ID"
+            }
+        }
+    },
+    "identityPassphraseRemembered": "Remembered",
+    "@identityPassphraseRemembered": {
+        "description": "Short badge shown on an identity tile when its passphrase is stored on the device",
+        "context": "Identities screen, identity list tile"
     },
     "identityActionsHeadline": "Actions",
     "@identityActionsHeadline": {

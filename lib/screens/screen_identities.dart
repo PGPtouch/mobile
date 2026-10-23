@@ -12,8 +12,13 @@ import 'package:shared/shared.dart';
 class ScreenIdentities extends StatefulWidget {
   final void Function(int id, String display, String fingerprint)
   onIdentitySelected;
+  final void Function(int id) onIdentityDeleted;
 
-  const new({super.key, required this.onIdentitySelected});
+  const new({
+    super.key,
+    required this.onIdentitySelected,
+    required this.onIdentityDeleted,
+  });
 
   @override
   State<ScreenIdentities> createState() => _ScreenIdentitiesState();
@@ -107,24 +112,51 @@ class _ScreenIdentitiesState extends State<ScreenIdentities> {
                   showKeyStoreReauthRequiredDialog(context);
                 }
               },
-              child: Column(
-                mainAxisSize: .min,
-                mainAxisAlignment: .center,
-                crossAxisAlignment: .center,
-                children: [
-                  DecoratedBox(
-                    decoration: MaterialShapes.ghostish.toShapeDecoration(
-                      color: colorScheme.primary,
+              child: Builder(
+                builder: (context) {
+                  final style = textTheme.headlineMedium!
+                      .copyWith(color: colorScheme.onPrimary)
+                      .bagelFatOne;
+                  final textPainter = TextPainter(
+                    text: TextSpan(
+                      text: appLocalizations.identitiesUnlock,
+                      style: style,
                     ),
-                    child: SizedBox.square(dimension: 128),
-                  ),
-                  Text(
-                    appLocalizations.identitiesUnlock,
-                    style: textTheme.headlineMedium!
-                        .copyWith(color: colorScheme.primary, height: 0.8)
-                        .bagelFatOne,
-                  ),
-                ],
+                    textDirection: Directionality.of(context),
+                    textScaler: MediaQuery.textScalerOf(context),
+                  )..layout();
+                  final height = textPainter.height + 16 + 24;
+                  final width = textPainter.width + 16 + 16;
+                  final side = width > height ? width : height;
+
+                  return Column(
+                    mainAxisSize: .min,
+                    mainAxisAlignment: .center,
+                    crossAxisAlignment: .center,
+                    children: [
+                      SizedBox.square(
+                        dimension: side,
+                        child: DecoratedBox(
+                          decoration: ShapeDecoration(
+                            color: colorScheme.primary,
+                            shape: MaterialShapeBorder(
+                              shape: MaterialShapes.ghostish,
+                            ),
+                          ),
+                          child: Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(16).copyWith(top: 24),
+                              child: Text(
+                                appLocalizations.identitiesUnlock,
+                                style: style,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           );
@@ -152,8 +184,8 @@ class _ScreenIdentitiesState extends State<ScreenIdentities> {
                     .toList();
                 return IdentityTile(
                   key: ValueKey(key.id),
-                  keyData: key,
-                  userIds: userIds,
+                  keyData: .new(key),
+                  userIds: userIds.toInterchangeable(),
                   onTap: () {
                     widget.onIdentitySelected(
                       key.id,
@@ -176,6 +208,7 @@ class _ScreenIdentitiesState extends State<ScreenIdentities> {
                           .join(),
                     );
                   },
+                  onIdentityDeleted: () => widget.onIdentityDeleted(key.id),
                 );
               }).toList(),
             ),

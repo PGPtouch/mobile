@@ -1,11 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:material_graphics/material_graphics.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:mobile/components/passphrase_input.dart';
 import 'package:mobile/components/protocol_manager_builder.dart';
 import 'package:mobile/components/protocol_permission_builder.dart';
 import 'package:mobile/l10n/app_localizations.dart';
-import 'package:shared/shared.dart';
 
 import '../database/key_store.dart' as key_store;
 
@@ -37,7 +35,6 @@ class _ScreenRunState extends State<ScreenRun> {
 
     final displayState = widget.protocol.displayState?.lastEvent;
     final contactMode = displayState?.contactMode;
-    final deviceRole = displayState?.deviceRole;
     final result = displayState?.result;
 
     return Column(
@@ -54,31 +51,36 @@ class _ScreenRunState extends State<ScreenRun> {
                       ? appLocalizations.transactionSuccess
                       : appLocalizations.transactionFailure,
               }, style: Theme.of(context).textTheme.headlineLarge),
-              Text(
-                appLocalizations.deviceRole(
-                  deviceRole?.value?.name ?? appLocalizations.unknown,
-                ),
-              ),
-              Text(
-                appLocalizations.transactionResult(
-                  result?.value?.mode.toString() ?? appLocalizations.unknown,
-                ),
-              ),
+              // Text(
+              //   appLocalizations.deviceRole(
+              //     deviceRole?.value?.name ?? appLocalizations.unknown,
+              //   ),
+              // ),
+              // Text(
+              //   appLocalizations.transactionResult(
+              //     result?.value?.mode.toString() ?? appLocalizations.unknown,
+              //   ),
+              // ),
               if (result?.value?.additionalInfo != null &&
                   result?.value?.mode == .success)
                 Card.outlined(
-                  margin: EdgeInsets.symmetric(vertical: 4),
-                  color: ColorScheme.of(context).secondaryContainer,
+                  margin: EdgeInsets.only(bottom: 4, top: 2),
                   child: Padding(
                     padding: const EdgeInsets.all(8),
-                    child: Text(
-                      formatFingerprint(
-                        result?.value?.additionalInfo.fingerprint,
-                      ),
-                      style: Theme.of(context)
-                          .textTheme
-                          .labelLarge
-                          ?.googleSansCode,
+                    child: Column(
+                      mainAxisSize: .min,
+                      children: [
+                        Text(result?.value?.additionalInfo.userIds.join(", ")),
+                        Text(
+                          formatFingerprint(
+                            result?.value?.additionalInfo.fingerprint,
+                          ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelLarge
+                              ?.googleSansCode,
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -172,66 +174,12 @@ class _ScreenRunState extends State<ScreenRun> {
   Future<void> _start() async {
     if (widget.selectedKey == null) return;
     final appLocalizations = AppLocalizations.of(context);
-
-    final unlock = await key_store.KeyStoreHandler.instance.unlock(
-      appLocalizations,
-    );
-    if (unlock != .unlocked) {
-      return;
-    }
-
-    final keyStore = key_store.KeyStoreHandler.instance.keyStore!;
-    final key = await (keyStore.select(
-      keyStore.keys,
-    )..where((k) => k.id.equals(widget.selectedKey!))).getSingle();
-    final userIds = await key.getUserIds(keyStore);
-
-    final privateData = Uint8List.fromList(key.privateData);
-
-    // An empty passphrase also covers keys that aren't encrypted at all.
-    final storedPassphrase = await key_store.KeyStoreHandler.instance
-        .getKeyPassphrase(key.fingerprint);
-    var privateKey = await decryptPrivateKey(
-      privateData,
-      storedPassphrase ?? "",
-    );
-    var remember = false;
-    String? enteredPassphrase;
-
-    if (privateKey == null) {
-      if (!mounted) return;
-      final tmp = await showPassphraseInputDialog(
-        context,
-        identity: userIds
-            .map(
-              (id) => UserId(
-                name: id.name,
-                comment: id.comment,
-                email: id.email,
-              ).toString(),
-            )
-            .toList(),
-        fingerprint: key.fingerprint,
-        validate: (passphrase) async {
-          privateKey = await decryptPrivateKey(privateData, passphrase);
-          return privateKey != null
-              ? null
-              : appLocalizations.passphraseInputWrong;
-        },
-      );
-      if (tmp == null || privateKey == null) return;
-      enteredPassphrase = tmp.passphrase;
-      remember = tmp.remember;
-    }
-    if (remember && enteredPassphrase != null) {
-      await key_store.KeyStoreHandler.instance.setKeyPassphrase(
-        key.fingerprint,
-        enteredPassphrase,
-      );
-    }
     await widget.protocol.start(
-      Uint8List.fromList(key.publicData),
-      privateKey!,
+      key_store.KeyStorePgpProvider(
+        context,
+        appLocalizations,
+        id: widget.selectedKey!,
+      ),
     );
   }
 }

@@ -990,12 +990,21 @@ final class BluetoothSender extends BluetoothSenderState with _DisposeOnce {
   Peripheral? _peripheral;
   GATTCharacteristic? _requestCharacteristic;
 
+  /// Set by [dispose]. Checked throughout [connect] so a cancellation
+  /// racing an in-flight connect attempt disconnects it promptly instead of
+  /// letting it complete undetected.
+  bool _isDisposed = false;
+
   @override
   Future<bool> isAvailable() => _ensureBluetoothReady(_centralManager);
 
   @override
   Future<bool> connect(String sessionId) async {
     log("BluetoothSender", "connect: sessionId=$sessionId");
+    if (_isDisposed) {
+      log("BluetoothSender", "connect: already disposed, aborting");
+      return false;
+    }
     if (_peripheral != null) {
       log("BluetoothSender", "already connected, disconnecting stale link");
       await disconnect();
@@ -1026,6 +1035,10 @@ final class BluetoothSender extends BluetoothSenderState with _DisposeOnce {
       log("BluetoothSender", "connect failed: no peripheral discovered");
       return false;
     }
+    if (_isDisposed) {
+      log("BluetoothSender", "connect: disposed during discovery, aborting");
+      return false;
+    }
 
     // Registered before connect() so a racing disconnect isn't missed.
     _connectionStateSubscription = _centralManager.connectionStateChanged
@@ -1047,6 +1060,7 @@ final class BluetoothSender extends BluetoothSenderState with _DisposeOnce {
     try {
       log("BluetoothSender", "connecting to peripheral $peripheral...");
       await _withTimeout(_centralManager.connect(peripheral), "connect");
+      if (await _abortConnectIfDisposed(peripheral)) return false;
       try {
         final mtu = await _withTimeout(
           _centralManager.requestMTU(peripheral, mtu: 517),
@@ -1056,11 +1070,13 @@ final class BluetoothSender extends BluetoothSenderState with _DisposeOnce {
       } catch (e, st) {
         log("BluetoothSender", "requestMTU failed: $e\n$st");
       }
+      if (await _abortConnectIfDisposed(peripheral)) return false;
       log("BluetoothSender", "connected, discovering GATT...");
       final services = await _withTimeout(
         _centralManager.discoverGATT(peripheral),
         "discoverGATT",
       );
+      if (await _abortConnectIfDisposed(peripheral)) return false;
       log(
         "BluetoothSender",
         "discovered services: "
@@ -1117,6 +1133,7 @@ final class BluetoothSender extends BluetoothSenderState with _DisposeOnce {
         ),
         "setCharacteristicNotifyState",
       );
+      if (await _abortConnectIfDisposed(peripheral)) return false;
       log("BluetoothSender", "notify state enabled on response characteristic");
       _notifySubscription = _centralManager.characteristicNotified.listen((
         event,
@@ -1133,6 +1150,7 @@ final class BluetoothSender extends BluetoothSenderState with _DisposeOnce {
         }
       });
 
+      if (await _abortConnectIfDisposed(peripheral)) return false;
       _peripheral = peripheral;
       _requestCharacteristic = requestCharacteristic;
       log("BluetoothSender", "connect succeeded");
@@ -1162,6 +1180,26 @@ final class BluetoothSender extends BluetoothSenderState with _DisposeOnce {
     _connectionStateSubscription = null;
     _peripheral = null;
     _requestCharacteristic = null;
+  }
+
+  /// Aborts an in-flight [connect] once [dispose] has run, disconnecting
+  /// whatever was set up so far. Returns whether an abort happened.
+  Future<bool> _abortConnectIfDisposed(Peripheral peripheral) async {
+    if (!_isDisposed) return false;
+    log("BluetoothSender", "connect: disposed mid-connect, aborting");
+    _forgetLink();
+    try {
+      await _withTimeout(
+        _centralManager.disconnect(peripheral),
+        "disconnect (disposed mid-connect)",
+      );
+    } catch (e, st) {
+      log(
+        "BluetoothSender",
+        "disconnect after disposal mid-connect failed: $e\n$st",
+      );
+    }
+    return true;
   }
 
   @override
@@ -1211,6 +1249,7 @@ final class BluetoothSender extends BluetoothSenderState with _DisposeOnce {
       return;
     }
     log("BluetoothSender", "dispose");
+    _isDisposed = true;
     await disconnect();
     await super.dispose();
   }
@@ -1222,6 +1261,11 @@ final class BluetoothReceiver extends BluetoothReceiverState with _DisposeOnce {
   _writeSubscription;
   StreamSubscription<CentralConnectionStateChangedEventArgs>?
   _connectionStateSubscription;
+
+  /// Set by [dispose]. Checked throughout [start] so a cancellation racing
+  /// an in-flight setup tears down the GATT service instead of letting
+  /// advertising/subscriptions start undetected.
+  bool _isDisposed = false;
 
   /// `BluetoothGattServer.addService` returns false (surfacing as a bare
   /// IllegalStateException) when the plugin's GATT server was closed or never
@@ -1294,6 +1338,22 @@ final class BluetoothReceiver extends BluetoothReceiverState with _DisposeOnce {
     );
     log("BluetoothReceiver", "service added");
 
+    if (_isDisposed) {
+      log("BluetoothReceiver", "start: disposed during setup, aborting");
+      try {
+        await _withTimeout(
+          _peripheralManager.removeAllServices(),
+          "removeAllServices (disposed mid-start)",
+        );
+      } catch (e, st) {
+        log(
+          "BluetoothReceiver",
+          "removeAllServices after disposal mid-start failed: $e\n$st",
+        );
+      }
+      return;
+    }
+
     _connectionStateSubscription = _peripheralManager.connectionStateChanged
         .listen((event) {
           log(
@@ -1345,6 +1405,25 @@ final class BluetoothReceiver extends BluetoothReceiverState with _DisposeOnce {
     );
 
     log("BluetoothReceiver", "starting advertising...");
+    if (_isDisposed) {
+      log("BluetoothReceiver", "start: disposed before advertising, aborting");
+      await _writeSubscription?.cancel();
+      _writeSubscription = null;
+      await _connectionStateSubscription?.cancel();
+      _connectionStateSubscription = null;
+      try {
+        await _withTimeout(
+          _peripheralManager.removeAllServices(),
+          "removeAllServices (disposed mid-start)",
+        );
+      } catch (e, st) {
+        log(
+          "BluetoothReceiver",
+          "removeAllServices after disposal mid-start failed: $e\n$st",
+        );
+      }
+      return;
+    }
     await _withTimeout(
       _peripheralManager.startAdvertising(
         Advertisement(serviceUUIDs: [serviceUuid]),
@@ -1361,6 +1440,13 @@ final class BluetoothReceiver extends BluetoothReceiverState with _DisposeOnce {
       return;
     }
     log("BluetoothReceiver", "dispose");
+    _isDisposed = true;
+    // Cancelled first, before any slow native teardown below, so a write
+    // request racing with disposal can't reach the still-registered handler.
+    await _writeSubscription?.cancel();
+    _writeSubscription = null;
+    await _connectionStateSubscription?.cancel();
+    _connectionStateSubscription = null;
     try {
       await _withTimeout(
         _peripheralManager.stopAdvertising(),
@@ -1369,10 +1455,6 @@ final class BluetoothReceiver extends BluetoothReceiverState with _DisposeOnce {
     } catch (e, st) {
       log("BluetoothReceiver", "dispose: stopAdvertising failed: $e\n$st");
     }
-    await _writeSubscription?.cancel();
-    _writeSubscription = null;
-    await _connectionStateSubscription?.cancel();
-    _connectionStateSubscription = null;
     try {
       await _withTimeout(
         _peripheralManager.removeAllServices(),
