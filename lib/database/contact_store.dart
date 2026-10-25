@@ -13,8 +13,9 @@ class Contacts extends Table {
   BlobColumn get fingerprint => blob()();
   BlobColumn get data => blob().unique()();
 
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  BoolColumn get isRevoked => boolean()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get expiresAt => dateTime().nullable()();
 }
 
 extension ContactExtension on Contact {

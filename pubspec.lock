@@ -17,6 +17,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "14.6.0"
+  android_file_picker:
+    dependency: transitive
+    description:
+      name: android_file_picker
+      sha256: e94229cc41c4bb5fb6a2254146340a8b650664c99b5c93b9001f66c3375d0060
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.1.1"
   ansi_regex:
     dependency: transitive
     description:
@@ -394,70 +402,46 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.0.1"
-  file_selector:
+  file_picker:
     dependency: "direct main"
     description:
-      name: file_selector
-      sha256: bd15e43e9268db636b53eeaca9f56324d1622af30e5c34d6e267649758c84d9a
+      name: file_picker
+      sha256: f201f3cbbb38ea5cd4e6896549662690f445a66261484f8ad697351c1ca25581
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.0"
-  file_selector_android:
+    version: "13.2.0"
+  file_picker_darwin:
     dependency: transitive
     description:
-      name: file_selector_android
-      sha256: d670cd0ce77a2e785b18d8b4d0a8d6a222d6a813ec9b7ddf2790a1b4fb6fa92c
+      name: file_picker_darwin
+      sha256: bd172f8ddec522f9bd9a26365545320f130a6ab7839eb2a634051fab4ced7eb7
       url: "https://pub.dev"
     source: hosted
-    version: "0.5.2+11"
-  file_selector_ios:
+    version: "2.3.4"
+  file_picker_linux:
     dependency: transitive
     description:
-      name: file_selector_ios
-      sha256: "5b42ec0ef7626124b4624ea244341e9df780406793c204e89fa68a2e71af115c"
+      name: file_picker_linux
+      sha256: e7db600f50672ce5ebbe422ac0906e0f3d2a476188cc93e7126afee12bf08063
       url: "https://pub.dev"
     source: hosted
-    version: "0.5.3+7"
-  file_selector_linux:
+    version: "2.0.0"
+  file_picker_platform_interface:
     dependency: transitive
     description:
-      name: file_selector_linux
-      sha256: da76400e7872ce7637ffdce12749ec24169c25f6195c28372208e65a24bcd2ab
+      name: file_picker_platform_interface
+      sha256: "336e7168306834a2b68e6168ed768e00d3fabeac23154d5793e277ca9f97cf20"
       url: "https://pub.dev"
     source: hosted
-    version: "0.9.4+1"
-  file_selector_macos:
+    version: "4.2.0"
+  file_picker_web:
     dependency: transitive
     description:
-      name: file_selector_macos
-      sha256: d785431f1910aac8a50e5c492cae912320158030a88703c67b9ef7f1f96fd7ba
+      name: file_picker_web
+      sha256: a2288008280aabe371aff029466b3405e60838e0a1d714767488c59b926c8b8c
       url: "https://pub.dev"
     source: hosted
-    version: "0.9.5+2"
-  file_selector_platform_interface:
-    dependency: transitive
-    description:
-      name: file_selector_platform_interface
-      sha256: "35e0bd61ebcdb91a3505813b055b09b79dfdc7d0aee9c09a7ba59ae4bb13dc85"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.7.0"
-  file_selector_web:
-    dependency: transitive
-    description:
-      name: file_selector_web
-      sha256: "73181fbc5257776d8ecaa6a94ab3c8e920ad143b9132a6d984a9271dfc6928d3"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.9.5"
-  file_selector_windows:
-    dependency: transitive
-    description:
-      name: file_selector_windows
-      sha256: fbefc5fb92c6d3cbe8d284a2cd971b593bb07d2cd6da8557b81a862250b4acec
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.9.3+6"
+    version: "4.2.0"
   fixnum:
     dependency: transitive
     description:
@@ -615,6 +599,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.5.11"
+  icon_craft:
+    dependency: "direct main"
+    description:
+      name: icon_craft
+      sha256: "9b3484dc86871014d87be20f2d763b67034fd45deca2d8aa9e79d405cb7eee30"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.1"
   intl:
     dependency: "direct main"
     description:
@@ -722,20 +714,16 @@ packages:
   material_graphics:
     dependency: "direct main"
     description:
-      path: "packages/material_graphics"
-      ref: HEAD
-      resolved-ref: "30f5c51fb446ecc52329faa31e8043eddcc7b40e"
-      url: "https://github.com/JHubi1/material.git"
-    source: git
+      path: "C:/Users/jakob/Documents/GitHub/material/packages/material_graphics"
+      relative: false
+    source: path
     version: "0.0.0"
   material_helper:
     dependency: "direct main"
     description:
-      path: "packages/material_helper"
-      ref: HEAD
-      resolved-ref: "30f5c51fb446ecc52329faa31e8043eddcc7b40e"
-      url: "https://github.com/JHubi1/material.git"
-    source: git
+      path: "C:/Users/jakob/Documents/GitHub/material/packages/material_helper"
+      relative: false
+    source: path
     version: "0.0.0"
   material_ui:
     dependency: "direct main"
@@ -1046,7 +1034,7 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: "8080b3a7559d83a8f5b62ca622f70e17ea1c5424"
+      resolved-ref: "3c1853c35111a268eae0fec01bd696b5463afee4"
       url: "https://github.com/PGPtouch/shared.git"
     source: git
     version: "0.0.0"
@@ -1415,6 +1403,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.3"
+  windows_file_picker:
+    dependency: transitive
+    description:
+      name: windows_file_picker
+      sha256: "18452aa293de3b6961c6d05b0e71b4be7bb90c67635abdd3aa5c4e75dd875072"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.1"
   xdg_directories:
     dependency: transitive
     description:

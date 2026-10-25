@@ -24,8 +24,9 @@ class Keys extends Table {
   BlobColumn get publicData => blob().unique()();
   BlobColumn get privateData => blob().unique()();
 
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  BoolColumn get isRevoked => boolean()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get expiresAt => dateTime().nullable()();
 }
 
 extension KeyExtension on Key {

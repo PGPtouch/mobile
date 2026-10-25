@@ -1,3 +1,4 @@
+import 'package:dart_pg/dart_pg.dart';
 import 'package:flutter/rendering.dart';
 import 'package:hyphenatorx/hyphenatorx.dart';
 import 'package:material_helper/material_helper.dart';
@@ -9,6 +10,7 @@ import 'package:mobile/components/step_by_step_guide_dialog.dart';
 import 'package:mobile/components/two_state_widget.dart';
 import 'package:mobile/database/contact_store.dart';
 import 'package:mobile/database/key_store.dart';
+import 'package:mobile/key_utils.dart';
 import 'package:mobile/l10n/app_localizations.dart';
 import 'package:mobile/screens/screen_identities.dart';
 import 'package:mobile/screens/settings.dart';
@@ -294,7 +296,14 @@ class _MainScreenState extends State<MainScreen>
                               contactStore.insertContact(
                                 ContactsCompanion.insert(
                                   fingerprint: key.fingerprint,
-                                  data: key.packetList.encode(),
+                                  data: encodePublicKey(key, [
+                                    PacketList.decode(keyRaw),
+                                  ]),
+                                  isRevoked: isPublicKeyDataRevoked(keyRaw),
+                                  createdAt: key.creationTime,
+                                  expiresAt: .absentIfNull(
+                                    keyExpirationTime(key),
+                                  ),
                                 ),
                                 key.users.map((user) => user.userID).toList(),
                               );
@@ -320,6 +329,11 @@ class _MainScreenState extends State<MainScreen>
                                   fingerprint: key.fingerprint,
                                   publicData: publicKey,
                                   privateData: privateKey,
+                                  isRevoked: isPublicKeyDataRevoked(publicKey),
+                                  createdAt: key.creationTime,
+                                  expiresAt: .absentIfNull(
+                                    keyExpirationTime(key),
+                                  ),
                                 ),
                                 key.users.map((user) => user.userID).toList(),
                               );

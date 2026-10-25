@@ -58,6 +58,20 @@ class $KeysTable extends Keys with TableInfo<$KeysTable, Key> {
         requiredDuringInsert: true,
         defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
       );
+  static const VerificationMeta _isRevokedMeta = const VerificationMeta(
+    'isRevoked',
+  );
+  @override
+  late final GeneratedColumn<bool> isRevoked = GeneratedColumn<bool>(
+    'is_revoked',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_revoked" IN (0, 1))',
+    ),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -67,20 +81,18 @@ class $KeysTable extends Keys with TableInfo<$KeysTable, Key> {
     aliasedName,
     false,
     type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-    defaultValue: currentDateAndTime,
+    requiredDuringInsert: true,
   );
-  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
-    'updatedAt',
+  static const VerificationMeta _expiresAtMeta = const VerificationMeta(
+    'expiresAt',
   );
   @override
-  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
-    'updated_at',
+  late final GeneratedColumn<DateTime> expiresAt = GeneratedColumn<DateTime>(
+    'expires_at',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    defaultValue: currentDateAndTime,
   );
   @override
   List<GeneratedColumn> get $columns => [
@@ -88,8 +100,9 @@ class $KeysTable extends Keys with TableInfo<$KeysTable, Key> {
     fingerprint,
     publicData,
     privateData,
+    isRevoked,
     createdAt,
-    updatedAt,
+    expiresAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -136,16 +149,26 @@ class $KeysTable extends Keys with TableInfo<$KeysTable, Key> {
     } else if (isInserting) {
       context.missing(_privateDataMeta);
     }
+    if (data.containsKey('is_revoked')) {
+      context.handle(
+        _isRevokedMeta,
+        isRevoked.isAcceptableOrUnknown(data['is_revoked']!, _isRevokedMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_isRevokedMeta);
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
     }
-    if (data.containsKey('updated_at')) {
+    if (data.containsKey('expires_at')) {
       context.handle(
-        _updatedAtMeta,
-        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+        _expiresAtMeta,
+        expiresAt.isAcceptableOrUnknown(data['expires_at']!, _expiresAtMeta),
       );
     }
     return context;
@@ -173,14 +196,18 @@ class $KeysTable extends Keys with TableInfo<$KeysTable, Key> {
         DriftSqlType.blob,
         data['${effectivePrefix}private_data'],
       )!,
+      isRevoked: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_revoked'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
-      updatedAt: attachedDatabase.typeMapping.read(
+      expiresAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
-        data['${effectivePrefix}updated_at'],
-      )!,
+        data['${effectivePrefix}expires_at'],
+      ),
     );
   }
 
@@ -195,15 +222,17 @@ class Key extends DataClass implements Insertable<Key> {
   final Uint8List fingerprint;
   final Uint8List publicData;
   final Uint8List privateData;
+  final bool isRevoked;
   final DateTime createdAt;
-  final DateTime updatedAt;
+  final DateTime? expiresAt;
   const Key({
     required this.id,
     required this.fingerprint,
     required this.publicData,
     required this.privateData,
+    required this.isRevoked,
     required this.createdAt,
-    required this.updatedAt,
+    this.expiresAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -212,8 +241,11 @@ class Key extends DataClass implements Insertable<Key> {
     map['fingerprint'] = Variable<Uint8List>(fingerprint);
     map['public_data'] = Variable<Uint8List>(publicData);
     map['private_data'] = Variable<Uint8List>(privateData);
+    map['is_revoked'] = Variable<bool>(isRevoked);
     map['created_at'] = Variable<DateTime>(createdAt);
-    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || expiresAt != null) {
+      map['expires_at'] = Variable<DateTime>(expiresAt);
+    }
     return map;
   }
 
@@ -223,8 +255,11 @@ class Key extends DataClass implements Insertable<Key> {
       fingerprint: Value(fingerprint),
       publicData: Value(publicData),
       privateData: Value(privateData),
+      isRevoked: Value(isRevoked),
       createdAt: Value(createdAt),
-      updatedAt: Value(updatedAt),
+      expiresAt: expiresAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(expiresAt),
     );
   }
 
@@ -238,8 +273,9 @@ class Key extends DataClass implements Insertable<Key> {
       fingerprint: serializer.fromJson<Uint8List>(json['fingerprint']),
       publicData: serializer.fromJson<Uint8List>(json['publicData']),
       privateData: serializer.fromJson<Uint8List>(json['privateData']),
+      isRevoked: serializer.fromJson<bool>(json['isRevoked']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      expiresAt: serializer.fromJson<DateTime?>(json['expiresAt']),
     );
   }
   @override
@@ -250,8 +286,9 @@ class Key extends DataClass implements Insertable<Key> {
       'fingerprint': serializer.toJson<Uint8List>(fingerprint),
       'publicData': serializer.toJson<Uint8List>(publicData),
       'privateData': serializer.toJson<Uint8List>(privateData),
+      'isRevoked': serializer.toJson<bool>(isRevoked),
       'createdAt': serializer.toJson<DateTime>(createdAt),
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'expiresAt': serializer.toJson<DateTime?>(expiresAt),
     };
   }
 
@@ -260,15 +297,17 @@ class Key extends DataClass implements Insertable<Key> {
     Uint8List? fingerprint,
     Uint8List? publicData,
     Uint8List? privateData,
+    bool? isRevoked,
     DateTime? createdAt,
-    DateTime? updatedAt,
+    Value<DateTime?> expiresAt = const Value.absent(),
   }) => Key(
     id: id ?? this.id,
     fingerprint: fingerprint ?? this.fingerprint,
     publicData: publicData ?? this.publicData,
     privateData: privateData ?? this.privateData,
+    isRevoked: isRevoked ?? this.isRevoked,
     createdAt: createdAt ?? this.createdAt,
-    updatedAt: updatedAt ?? this.updatedAt,
+    expiresAt: expiresAt.present ? expiresAt.value : this.expiresAt,
   );
   Key copyWithCompanion(KeysCompanion data) {
     return Key(
@@ -282,8 +321,9 @@ class Key extends DataClass implements Insertable<Key> {
       privateData: data.privateData.present
           ? data.privateData.value
           : this.privateData,
+      isRevoked: data.isRevoked.present ? data.isRevoked.value : this.isRevoked,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
-      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      expiresAt: data.expiresAt.present ? data.expiresAt.value : this.expiresAt,
     );
   }
 
@@ -294,8 +334,9 @@ class Key extends DataClass implements Insertable<Key> {
           ..write('fingerprint: $fingerprint, ')
           ..write('publicData: $publicData, ')
           ..write('privateData: $privateData, ')
+          ..write('isRevoked: $isRevoked, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('expiresAt: $expiresAt')
           ..write(')'))
         .toString();
   }
@@ -306,8 +347,9 @@ class Key extends DataClass implements Insertable<Key> {
     $driftBlobEquality.hash(fingerprint),
     $driftBlobEquality.hash(publicData),
     $driftBlobEquality.hash(privateData),
+    isRevoked,
     createdAt,
-    updatedAt,
+    expiresAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -317,8 +359,9 @@ class Key extends DataClass implements Insertable<Key> {
           $driftBlobEquality.equals(other.fingerprint, this.fingerprint) &&
           $driftBlobEquality.equals(other.publicData, this.publicData) &&
           $driftBlobEquality.equals(other.privateData, this.privateData) &&
+          other.isRevoked == this.isRevoked &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.expiresAt == this.expiresAt);
 }
 
 class KeysCompanion extends UpdateCompanion<Key> {
@@ -326,41 +369,48 @@ class KeysCompanion extends UpdateCompanion<Key> {
   final Value<Uint8List> fingerprint;
   final Value<Uint8List> publicData;
   final Value<Uint8List> privateData;
+  final Value<bool> isRevoked;
   final Value<DateTime> createdAt;
-  final Value<DateTime> updatedAt;
+  final Value<DateTime?> expiresAt;
   const KeysCompanion({
     this.id = const Value.absent(),
     this.fingerprint = const Value.absent(),
     this.publicData = const Value.absent(),
     this.privateData = const Value.absent(),
+    this.isRevoked = const Value.absent(),
     this.createdAt = const Value.absent(),
-    this.updatedAt = const Value.absent(),
+    this.expiresAt = const Value.absent(),
   });
   KeysCompanion.insert({
     this.id = const Value.absent(),
     required Uint8List fingerprint,
     required Uint8List publicData,
     required Uint8List privateData,
-    this.createdAt = const Value.absent(),
-    this.updatedAt = const Value.absent(),
+    required bool isRevoked,
+    required DateTime createdAt,
+    this.expiresAt = const Value.absent(),
   }) : fingerprint = Value(fingerprint),
        publicData = Value(publicData),
-       privateData = Value(privateData);
+       privateData = Value(privateData),
+       isRevoked = Value(isRevoked),
+       createdAt = Value(createdAt);
   static Insertable<Key> custom({
     Expression<int>? id,
     Expression<Uint8List>? fingerprint,
     Expression<Uint8List>? publicData,
     Expression<Uint8List>? privateData,
+    Expression<bool>? isRevoked,
     Expression<DateTime>? createdAt,
-    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? expiresAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (fingerprint != null) 'fingerprint': fingerprint,
       if (publicData != null) 'public_data': publicData,
       if (privateData != null) 'private_data': privateData,
+      if (isRevoked != null) 'is_revoked': isRevoked,
       if (createdAt != null) 'created_at': createdAt,
-      if (updatedAt != null) 'updated_at': updatedAt,
+      if (expiresAt != null) 'expires_at': expiresAt,
     });
   }
 
@@ -369,16 +419,18 @@ class KeysCompanion extends UpdateCompanion<Key> {
     Value<Uint8List>? fingerprint,
     Value<Uint8List>? publicData,
     Value<Uint8List>? privateData,
+    Value<bool>? isRevoked,
     Value<DateTime>? createdAt,
-    Value<DateTime>? updatedAt,
+    Value<DateTime?>? expiresAt,
   }) {
     return KeysCompanion(
       id: id ?? this.id,
       fingerprint: fingerprint ?? this.fingerprint,
       publicData: publicData ?? this.publicData,
       privateData: privateData ?? this.privateData,
+      isRevoked: isRevoked ?? this.isRevoked,
       createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
+      expiresAt: expiresAt ?? this.expiresAt,
     );
   }
 
@@ -397,11 +449,14 @@ class KeysCompanion extends UpdateCompanion<Key> {
     if (privateData.present) {
       map['private_data'] = Variable<Uint8List>(privateData.value);
     }
+    if (isRevoked.present) {
+      map['is_revoked'] = Variable<bool>(isRevoked.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
-    if (updatedAt.present) {
-      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    if (expiresAt.present) {
+      map['expires_at'] = Variable<DateTime>(expiresAt.value);
     }
     return map;
   }
@@ -413,8 +468,9 @@ class KeysCompanion extends UpdateCompanion<Key> {
           ..write('fingerprint: $fingerprint, ')
           ..write('publicData: $publicData, ')
           ..write('privateData: $privateData, ')
+          ..write('isRevoked: $isRevoked, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('expiresAt: $expiresAt')
           ..write(')'))
         .toString();
   }
@@ -808,16 +864,18 @@ typedef $$KeysTableCreateCompanionBuilder = KeysCompanion Function({
   required Uint8List fingerprint,
   required Uint8List publicData,
   required Uint8List privateData,
-  Value<DateTime> createdAt,
-  Value<DateTime> updatedAt,
+  required bool isRevoked,
+  required DateTime createdAt,
+  Value<DateTime?> expiresAt,
 });
 typedef $$KeysTableUpdateCompanionBuilder = KeysCompanion Function({
   Value<int> id,
   Value<Uint8List> fingerprint,
   Value<Uint8List> publicData,
   Value<Uint8List> privateData,
+  Value<bool> isRevoked,
   Value<DateTime> createdAt,
-  Value<DateTime> updatedAt,
+  Value<DateTime?> expiresAt,
 });
 
 final class $$KeysTableReferences
@@ -871,13 +929,18 @@ class $$KeysTableFilterComposer extends Composer<_$KeyStore, $KeysTable> {
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get isRevoked => $composableBuilder(
+    column: $table.isRevoked,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
-    column: $table.updatedAt,
+  ColumnFilters<DateTime> get expiresAt => $composableBuilder(
+    column: $table.expiresAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -935,13 +998,18 @@ class $$KeysTableOrderingComposer extends Composer<_$KeyStore, $KeysTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isRevoked => $composableBuilder(
+    column: $table.isRevoked,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
-    column: $table.updatedAt,
+  ColumnOrderings<DateTime> get expiresAt => $composableBuilder(
+    column: $table.expiresAt,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -972,11 +1040,14 @@ class $$KeysTableAnnotationComposer extends Composer<_$KeyStore, $KeysTable> {
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get isRevoked =>
+      $composableBuilder(column: $table.isRevoked, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get updatedAt =>
-      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+  GeneratedColumn<DateTime> get expiresAt =>
+      $composableBuilder(column: $table.expiresAt, builder: (column) => column);
 
   Expression<T> keyUserIdsRefs<T extends Object>(
     Expression<T> Function($$KeyUserIdsTableAnnotationComposer a) f,
@@ -1036,15 +1107,17 @@ class $$KeysTableTableManager
                 Value<Uint8List> fingerprint = const Value.absent(),
                 Value<Uint8List> publicData = const Value.absent(),
                 Value<Uint8List> privateData = const Value.absent(),
+                Value<bool> isRevoked = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
-                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> expiresAt = const Value.absent(),
               }) => KeysCompanion(
                 id: id,
                 fingerprint: fingerprint,
                 publicData: publicData,
                 privateData: privateData,
+                isRevoked: isRevoked,
                 createdAt: createdAt,
-                updatedAt: updatedAt,
+                expiresAt: expiresAt,
               ),
           createCompanionCallback:
               ({
@@ -1052,15 +1125,17 @@ class $$KeysTableTableManager
                 required Uint8List fingerprint,
                 required Uint8List publicData,
                 required Uint8List privateData,
-                Value<DateTime> createdAt = const Value.absent(),
-                Value<DateTime> updatedAt = const Value.absent(),
+                required bool isRevoked,
+                required DateTime createdAt,
+                Value<DateTime?> expiresAt = const Value.absent(),
               }) => KeysCompanion.insert(
                 id: id,
                 fingerprint: fingerprint,
                 publicData: publicData,
                 privateData: privateData,
+                isRevoked: isRevoked,
                 createdAt: createdAt,
-                updatedAt: updatedAt,
+                expiresAt: expiresAt,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -1078,14 +1153,19 @@ class $$KeysTableTableManager
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (keyUserIdsRefs)
-                    await $_getPrefetchedData<Key, $KeysTable, KeyUserId>(
+                    await $_getPrefetchedDataByColumns<
+                      Key,
+                      $KeysTable,
+                      KeyUserId,
+                      $KeyUserIdsTable
+                    >(
                       currentTable: table,
                       referencedTable: $$KeysTableReferences
                           ._keyUserIdsRefsTable(db),
                       managerFromTypedResult: (p0) =>
                           $$KeysTableReferences(db, table, p0).keyUserIdsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.parent == item.id),
+                      currentColumn: 'id',
+                      referencedColumn: 'parent',
                       typedResults: items,
                     ),
                 ];

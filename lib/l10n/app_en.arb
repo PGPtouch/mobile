@@ -250,6 +250,26 @@
         "description": "Button label to submit the entered passphrase",
         "context": "Passphrase input"
     },
+    "backupCodeInputPrompt": "The selected file is a Backup File, so you need the designated 24 character backup code to proceed.",
+    "@backupCodeInputPrompt": {
+        "description": "Text above the backup code fields explaining that a 24 character backup code is required to open the selected backup file",
+        "context": "Backup code input"
+    },
+    "backupCodeInputWrong": "Wrong backup code.",
+    "@backupCodeInputWrong": {
+        "description": "Error shown when the entered backup code cannot decrypt the backup",
+        "context": "Backup code input"
+    },
+    "backupCodeShowPrompt": "The following 24 character backup code is needed to use the Backup File later on. Store it securely in a separate location away from the Backup File.",
+    "@backupCodeShowPrompt": {
+        "description": "Text above the generated backup code explaining that it is needed to use the Backup File later on and must be stored separately from it",
+        "context": "Backup code display, bottom sheet"
+    },
+    "backupCodeShowCopy": "Copy",
+    "@backupCodeShowCopy": {
+        "description": "Button label to copy the generated backup code to the clipboard",
+        "context": "Backup code display, bottom sheet"
+    },
     "addContactClipboardEmpty": "Clipboard is empty.",
     "@addContactClipboardEmpty": {
         "description": "Message shown when the clipboard contains no text while adding a contact",
@@ -269,11 +289,6 @@
                 "type": "int"
             }
         }
-    },
-    "addContactFileImport": "Import",
-    "@addContactFileImport": {
-        "description": "Confirm button label of the file picker used to import public keys",
-        "context": "Add contact flow, file picker dialog"
     },
     "addContactFileFailed": "Failed to read file.",
     "@addContactFileFailed": {
@@ -440,6 +455,41 @@
         "description": "Value shown as expiration date when the key does not expire",
         "context": "Identities screen, identity tile and identity details sheet"
     },
+    "identityExpired": "Expired",
+    "@identityExpired": {
+        "description": "Warning shown on an identity whose key has expired",
+        "context": "Identities screen, identity tile"
+    },
+    "identityRevoked": "Revoked",
+    "@identityRevoked": {
+        "description": "Warning shown on an identity whose key has been revoked",
+        "context": "Identities screen, identity tile"
+    },
+    "identityRevocationReasonNoReason": "No reason given",
+    "@identityRevocationReasonNoReason": {
+        "description": "Revocation reason shown when the key was revoked without giving a reason",
+        "context": "Identities screen, identity tile"
+    },
+    "identityRevocationReasonKeySuperseded": "Key superseded",
+    "@identityRevocationReasonKeySuperseded": {
+        "description": "Revocation reason shown when the key was replaced by a newer key",
+        "context": "Identities screen, identity tile"
+    },
+    "identityRevocationReasonKeyCompromised": "Key compromised",
+    "@identityRevocationReasonKeyCompromised": {
+        "description": "Revocation reason shown when the secret key may have been exposed",
+        "context": "Identities screen, identity tile"
+    },
+    "identityRevocationReasonKeyRetired": "Has been retired",
+    "@identityRevocationReasonKeyRetired": {
+        "description": "Revocation reason shown when the key is no longer in use",
+        "context": "Identities screen, identity tile"
+    },
+    "identityRevocationReasonUserIdInvalid": "Invalid user ID",
+    "@identityRevocationReasonUserIdInvalid": {
+        "description": "Revocation reason shown when the user ID of the key is no longer valid",
+        "context": "Identities screen, identity tile"
+    },
     "identityKeyStrength": "Key strength",
     "@identityKeyStrength": {
         "description": "Title of the entry showing the strength of the key",
@@ -496,6 +546,16 @@
         "description": "Headline of the section listing the actions available for an identity key",
         "context": "Identities screen, identity details sheet"
     },
+    "identityExportKey": "Export key",
+    "@identityExportKey": {
+        "description": "Title of the action that exports the key to a file",
+        "context": "Identities screen, identity details sheet, action"
+    },
+    "identityExportBackup": "Export as backup",
+    "@identityExportBackup": {
+        "description": "Title of the action that exports the key as an encrypted backup file protected by a backup code",
+        "context": "Identities screen, identity details sheet, action"
+    },
     "identityDeleteKey": "Delete key",
     "@identityDeleteKey": {
         "description": "Title of the action that deletes the key and its stored passphrase",
@@ -505,6 +565,77 @@
     "@identityDeleteStoredPassphrase": {
         "description": "Title of the action that deletes only the stored passphrase of the key",
         "context": "Identities screen, identity details sheet, action"
+    },
+    "identityBackupExported": "Backup exported.",
+    "@identityBackupExported": {
+        "description": "Snackbar message shown after the key backup was saved successfully",
+        "context": "Identities screen, identity details sheet, snackbar"
+    },
+    "identityBackupExportFailed": "Failed to export backup.",
+    "@identityBackupExportFailed": {
+        "description": "Snackbar message shown when exporting the key backup failed",
+        "context": "Identities screen, identity details sheet, snackbar"
+    },
+    "identityKeyExported": "Key exported.",
+    "@identityKeyExported": {
+        "description": "Snackbar message shown after the key was exported successfully",
+        "context": "Identities screen, identity details sheet, snackbar"
+    },
+    "identityKeyExportFailed": "Failed to export key.",
+    "@identityKeyExportFailed": {
+        "description": "Snackbar message shown when exporting the key failed",
+        "context": "Identities screen, identity details sheet, snackbar"
+    },
+    "identityDeleted": "Deleted.",
+    "@identityDeleted": {
+        "description": "Snackbar message shown after the key was deleted successfully",
+        "context": "Identities screen, identity details sheet, snackbar"
+    },
+    "identityDeleteFailed": "Failed to delete.",
+    "@identityDeleteFailed": {
+        "description": "Snackbar message shown when deleting the key failed",
+        "context": "Identities screen, identity details sheet, snackbar"
+    },
+    "identityStoredPassphraseRemoved": "Stored passphrase removed.",
+    "@identityStoredPassphraseRemoved": {
+        "description": "Snackbar message shown after the stored passphrase of the key was removed successfully",
+        "context": "Identities screen, identity details sheet, snackbar"
+    },
+    "identityStoredPassphraseRemoveFailed": "Failed to remove stored passphrase.",
+    "@identityStoredPassphraseRemoveFailed": {
+        "description": "Snackbar message shown when removing the stored passphrase of the key failed",
+        "context": "Identities screen, identity details sheet, snackbar"
+    },
+    "identityUpdatePublicKey": "Update public key",
+    "@identityUpdatePublicKey": {
+        "description": "Title of the action that fetches the latest version of the public key from online sources",
+        "context": "Identities screen, identity details sheet, action"
+    },
+    "identityUpdateKey": "Update key",
+    "@identityUpdateKey": {
+        "description": "Title of the action that fetches the latest version of a contact's key from online sources",
+        "context": "Contacts screen, contact details sheet, action"
+    },
+    "identityPublicKeyUpdated": "Updated successfully from: {origin}",
+    "@identityPublicKeyUpdated": {
+        "description": "Snackbar message shown after the public key was updated successfully",
+        "context": "Identities screen, identity details sheet, snackbar",
+        "placeholders": {
+            "origin": {
+                "type": "String",
+                "example": "keys.openpgp.org"
+            }
+        }
+    },
+    "identityPublicKeyUpdateNoSource": "No source available.",
+    "@identityPublicKeyUpdateNoSource": {
+        "description": "Snackbar message shown when no online source offers an updated public key",
+        "context": "Identities screen, identity details sheet, snackbar"
+    },
+    "identityPublicKeyUpdateFailed": "Failed to update.",
+    "@identityPublicKeyUpdateFailed": {
+        "description": "Snackbar message shown when updating the public key failed",
+        "context": "Identities screen, identity details sheet, snackbar"
     },
     "settingsHkpKeyServers": "HKP key servers",
     "@settingsHkpKeyServers": {

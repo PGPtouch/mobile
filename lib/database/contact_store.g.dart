@@ -54,6 +54,20 @@ class $ContactsTable extends Contacts with TableInfo<$ContactsTable, Contact> {
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
   );
+  static const VerificationMeta _isRevokedMeta = const VerificationMeta(
+    'isRevoked',
+  );
+  @override
+  late final GeneratedColumn<bool> isRevoked = GeneratedColumn<bool>(
+    'is_revoked',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_revoked" IN (0, 1))',
+    ),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -63,20 +77,18 @@ class $ContactsTable extends Contacts with TableInfo<$ContactsTable, Contact> {
     aliasedName,
     false,
     type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-    defaultValue: currentDateAndTime,
+    requiredDuringInsert: true,
   );
-  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
-    'updatedAt',
+  static const VerificationMeta _expiresAtMeta = const VerificationMeta(
+    'expiresAt',
   );
   @override
-  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
-    'updated_at',
+  late final GeneratedColumn<DateTime> expiresAt = GeneratedColumn<DateTime>(
+    'expires_at',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    defaultValue: currentDateAndTime,
   );
   @override
   List<GeneratedColumn> get $columns => [
@@ -84,8 +96,9 @@ class $ContactsTable extends Contacts with TableInfo<$ContactsTable, Contact> {
     displayName,
     fingerprint,
     data,
+    isRevoked,
     createdAt,
-    updatedAt,
+    expiresAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -130,16 +143,26 @@ class $ContactsTable extends Contacts with TableInfo<$ContactsTable, Contact> {
     } else if (isInserting) {
       context.missing(_dataMeta);
     }
+    if (data.containsKey('is_revoked')) {
+      context.handle(
+        _isRevokedMeta,
+        isRevoked.isAcceptableOrUnknown(data['is_revoked']!, _isRevokedMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_isRevokedMeta);
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
     }
-    if (data.containsKey('updated_at')) {
+    if (data.containsKey('expires_at')) {
       context.handle(
-        _updatedAtMeta,
-        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+        _expiresAtMeta,
+        expiresAt.isAcceptableOrUnknown(data['expires_at']!, _expiresAtMeta),
       );
     }
     return context;
@@ -167,14 +190,18 @@ class $ContactsTable extends Contacts with TableInfo<$ContactsTable, Contact> {
         DriftSqlType.blob,
         data['${effectivePrefix}data'],
       )!,
+      isRevoked: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_revoked'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
-      updatedAt: attachedDatabase.typeMapping.read(
+      expiresAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
-        data['${effectivePrefix}updated_at'],
-      )!,
+        data['${effectivePrefix}expires_at'],
+      ),
     );
   }
 
@@ -189,15 +216,17 @@ class Contact extends DataClass implements Insertable<Contact> {
   final String? displayName;
   final Uint8List fingerprint;
   final Uint8List data;
+  final bool isRevoked;
   final DateTime createdAt;
-  final DateTime updatedAt;
+  final DateTime? expiresAt;
   const Contact({
     required this.id,
     this.displayName,
     required this.fingerprint,
     required this.data,
+    required this.isRevoked,
     required this.createdAt,
-    required this.updatedAt,
+    this.expiresAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -208,8 +237,11 @@ class Contact extends DataClass implements Insertable<Contact> {
     }
     map['fingerprint'] = Variable<Uint8List>(fingerprint);
     map['data'] = Variable<Uint8List>(data);
+    map['is_revoked'] = Variable<bool>(isRevoked);
     map['created_at'] = Variable<DateTime>(createdAt);
-    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || expiresAt != null) {
+      map['expires_at'] = Variable<DateTime>(expiresAt);
+    }
     return map;
   }
 
@@ -221,8 +253,11 @@ class Contact extends DataClass implements Insertable<Contact> {
           : Value(displayName),
       fingerprint: Value(fingerprint),
       data: Value(data),
+      isRevoked: Value(isRevoked),
       createdAt: Value(createdAt),
-      updatedAt: Value(updatedAt),
+      expiresAt: expiresAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(expiresAt),
     );
   }
 
@@ -236,8 +271,9 @@ class Contact extends DataClass implements Insertable<Contact> {
       displayName: serializer.fromJson<String?>(json['displayName']),
       fingerprint: serializer.fromJson<Uint8List>(json['fingerprint']),
       data: serializer.fromJson<Uint8List>(json['data']),
+      isRevoked: serializer.fromJson<bool>(json['isRevoked']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      expiresAt: serializer.fromJson<DateTime?>(json['expiresAt']),
     );
   }
   @override
@@ -248,8 +284,9 @@ class Contact extends DataClass implements Insertable<Contact> {
       'displayName': serializer.toJson<String?>(displayName),
       'fingerprint': serializer.toJson<Uint8List>(fingerprint),
       'data': serializer.toJson<Uint8List>(data),
+      'isRevoked': serializer.toJson<bool>(isRevoked),
       'createdAt': serializer.toJson<DateTime>(createdAt),
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'expiresAt': serializer.toJson<DateTime?>(expiresAt),
     };
   }
 
@@ -258,15 +295,17 @@ class Contact extends DataClass implements Insertable<Contact> {
     Value<String?> displayName = const Value.absent(),
     Uint8List? fingerprint,
     Uint8List? data,
+    bool? isRevoked,
     DateTime? createdAt,
-    DateTime? updatedAt,
+    Value<DateTime?> expiresAt = const Value.absent(),
   }) => Contact(
     id: id ?? this.id,
     displayName: displayName.present ? displayName.value : this.displayName,
     fingerprint: fingerprint ?? this.fingerprint,
     data: data ?? this.data,
+    isRevoked: isRevoked ?? this.isRevoked,
     createdAt: createdAt ?? this.createdAt,
-    updatedAt: updatedAt ?? this.updatedAt,
+    expiresAt: expiresAt.present ? expiresAt.value : this.expiresAt,
   );
   Contact copyWithCompanion(ContactsCompanion data) {
     return Contact(
@@ -278,8 +317,9 @@ class Contact extends DataClass implements Insertable<Contact> {
           ? data.fingerprint.value
           : this.fingerprint,
       data: data.data.present ? data.data.value : this.data,
+      isRevoked: data.isRevoked.present ? data.isRevoked.value : this.isRevoked,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
-      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      expiresAt: data.expiresAt.present ? data.expiresAt.value : this.expiresAt,
     );
   }
 
@@ -290,8 +330,9 @@ class Contact extends DataClass implements Insertable<Contact> {
           ..write('displayName: $displayName, ')
           ..write('fingerprint: $fingerprint, ')
           ..write('data: $data, ')
+          ..write('isRevoked: $isRevoked, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('expiresAt: $expiresAt')
           ..write(')'))
         .toString();
   }
@@ -302,8 +343,9 @@ class Contact extends DataClass implements Insertable<Contact> {
     displayName,
     $driftBlobEquality.hash(fingerprint),
     $driftBlobEquality.hash(data),
+    isRevoked,
     createdAt,
-    updatedAt,
+    expiresAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -313,8 +355,9 @@ class Contact extends DataClass implements Insertable<Contact> {
           other.displayName == this.displayName &&
           $driftBlobEquality.equals(other.fingerprint, this.fingerprint) &&
           $driftBlobEquality.equals(other.data, this.data) &&
+          other.isRevoked == this.isRevoked &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.expiresAt == this.expiresAt);
 }
 
 class ContactsCompanion extends UpdateCompanion<Contact> {
@@ -322,40 +365,47 @@ class ContactsCompanion extends UpdateCompanion<Contact> {
   final Value<String?> displayName;
   final Value<Uint8List> fingerprint;
   final Value<Uint8List> data;
+  final Value<bool> isRevoked;
   final Value<DateTime> createdAt;
-  final Value<DateTime> updatedAt;
+  final Value<DateTime?> expiresAt;
   const ContactsCompanion({
     this.id = const Value.absent(),
     this.displayName = const Value.absent(),
     this.fingerprint = const Value.absent(),
     this.data = const Value.absent(),
+    this.isRevoked = const Value.absent(),
     this.createdAt = const Value.absent(),
-    this.updatedAt = const Value.absent(),
+    this.expiresAt = const Value.absent(),
   });
   ContactsCompanion.insert({
     this.id = const Value.absent(),
     this.displayName = const Value.absent(),
     required Uint8List fingerprint,
     required Uint8List data,
-    this.createdAt = const Value.absent(),
-    this.updatedAt = const Value.absent(),
+    required bool isRevoked,
+    required DateTime createdAt,
+    this.expiresAt = const Value.absent(),
   }) : fingerprint = Value(fingerprint),
-       data = Value(data);
+       data = Value(data),
+       isRevoked = Value(isRevoked),
+       createdAt = Value(createdAt);
   static Insertable<Contact> custom({
     Expression<int>? id,
     Expression<String>? displayName,
     Expression<Uint8List>? fingerprint,
     Expression<Uint8List>? data,
+    Expression<bool>? isRevoked,
     Expression<DateTime>? createdAt,
-    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? expiresAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (displayName != null) 'display_name': displayName,
       if (fingerprint != null) 'fingerprint': fingerprint,
       if (data != null) 'data': data,
+      if (isRevoked != null) 'is_revoked': isRevoked,
       if (createdAt != null) 'created_at': createdAt,
-      if (updatedAt != null) 'updated_at': updatedAt,
+      if (expiresAt != null) 'expires_at': expiresAt,
     });
   }
 
@@ -364,16 +414,18 @@ class ContactsCompanion extends UpdateCompanion<Contact> {
     Value<String?>? displayName,
     Value<Uint8List>? fingerprint,
     Value<Uint8List>? data,
+    Value<bool>? isRevoked,
     Value<DateTime>? createdAt,
-    Value<DateTime>? updatedAt,
+    Value<DateTime?>? expiresAt,
   }) {
     return ContactsCompanion(
       id: id ?? this.id,
       displayName: displayName ?? this.displayName,
       fingerprint: fingerprint ?? this.fingerprint,
       data: data ?? this.data,
+      isRevoked: isRevoked ?? this.isRevoked,
       createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
+      expiresAt: expiresAt ?? this.expiresAt,
     );
   }
 
@@ -392,11 +444,14 @@ class ContactsCompanion extends UpdateCompanion<Contact> {
     if (data.present) {
       map['data'] = Variable<Uint8List>(data.value);
     }
+    if (isRevoked.present) {
+      map['is_revoked'] = Variable<bool>(isRevoked.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
-    if (updatedAt.present) {
-      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    if (expiresAt.present) {
+      map['expires_at'] = Variable<DateTime>(expiresAt.value);
     }
     return map;
   }
@@ -408,8 +463,9 @@ class ContactsCompanion extends UpdateCompanion<Contact> {
           ..write('displayName: $displayName, ')
           ..write('fingerprint: $fingerprint, ')
           ..write('data: $data, ')
+          ..write('isRevoked: $isRevoked, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('expiresAt: $expiresAt')
           ..write(')'))
         .toString();
   }
@@ -803,16 +859,18 @@ typedef $$ContactsTableCreateCompanionBuilder = ContactsCompanion Function({
   Value<String?> displayName,
   required Uint8List fingerprint,
   required Uint8List data,
-  Value<DateTime> createdAt,
-  Value<DateTime> updatedAt,
+  required bool isRevoked,
+  required DateTime createdAt,
+  Value<DateTime?> expiresAt,
 });
 typedef $$ContactsTableUpdateCompanionBuilder = ContactsCompanion Function({
   Value<int> id,
   Value<String?> displayName,
   Value<Uint8List> fingerprint,
   Value<Uint8List> data,
+  Value<bool> isRevoked,
   Value<DateTime> createdAt,
-  Value<DateTime> updatedAt,
+  Value<DateTime?> expiresAt,
 });
 
 final class $$ContactsTableReferences
@@ -867,13 +925,18 @@ class $$ContactsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get isRevoked => $composableBuilder(
+    column: $table.isRevoked,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
-    column: $table.updatedAt,
+  ColumnFilters<DateTime> get expiresAt => $composableBuilder(
+    column: $table.expiresAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -932,13 +995,18 @@ class $$ContactsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isRevoked => $composableBuilder(
+    column: $table.isRevoked,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
-    column: $table.updatedAt,
+  ColumnOrderings<DateTime> get expiresAt => $composableBuilder(
+    column: $table.expiresAt,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -968,11 +1036,14 @@ class $$ContactsTableAnnotationComposer
   GeneratedColumn<Uint8List> get data =>
       $composableBuilder(column: $table.data, builder: (column) => column);
 
+  GeneratedColumn<bool> get isRevoked =>
+      $composableBuilder(column: $table.isRevoked, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get updatedAt =>
-      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+  GeneratedColumn<DateTime> get expiresAt =>
+      $composableBuilder(column: $table.expiresAt, builder: (column) => column);
 
   Expression<T> contactUserIdsRefs<T extends Object>(
     Expression<T> Function($$ContactUserIdsTableAnnotationComposer a) f,
@@ -1032,15 +1103,17 @@ class $$ContactsTableTableManager
                 Value<String?> displayName = const Value.absent(),
                 Value<Uint8List> fingerprint = const Value.absent(),
                 Value<Uint8List> data = const Value.absent(),
+                Value<bool> isRevoked = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
-                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> expiresAt = const Value.absent(),
               }) => ContactsCompanion(
                 id: id,
                 displayName: displayName,
                 fingerprint: fingerprint,
                 data: data,
+                isRevoked: isRevoked,
                 createdAt: createdAt,
-                updatedAt: updatedAt,
+                expiresAt: expiresAt,
               ),
           createCompanionCallback:
               ({
@@ -1048,15 +1121,17 @@ class $$ContactsTableTableManager
                 Value<String?> displayName = const Value.absent(),
                 required Uint8List fingerprint,
                 required Uint8List data,
-                Value<DateTime> createdAt = const Value.absent(),
-                Value<DateTime> updatedAt = const Value.absent(),
+                required bool isRevoked,
+                required DateTime createdAt,
+                Value<DateTime?> expiresAt = const Value.absent(),
               }) => ContactsCompanion.insert(
                 id: id,
                 displayName: displayName,
                 fingerprint: fingerprint,
                 data: data,
+                isRevoked: isRevoked,
                 createdAt: createdAt,
-                updatedAt: updatedAt,
+                expiresAt: expiresAt,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -1076,10 +1151,11 @@ class $$ContactsTableTableManager
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (contactUserIdsRefs)
-                    await $_getPrefetchedData<
+                    await $_getPrefetchedDataByColumns<
                       Contact,
                       $ContactsTable,
-                      ContactUserId
+                      ContactUserId,
+                      $ContactUserIdsTable
                     >(
                       currentTable: table,
                       referencedTable: $$ContactsTableReferences
@@ -1089,8 +1165,8 @@ class $$ContactsTableTableManager
                         table,
                         p0,
                       ).contactUserIdsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.parent == item.id),
+                      currentColumn: 'id',
+                      referencedColumn: 'parent',
                       typedResults: items,
                     ),
                 ];

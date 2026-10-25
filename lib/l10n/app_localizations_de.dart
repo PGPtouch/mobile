@@ -160,6 +160,20 @@ class AppLocalizationsDe extends AppLocalizations {
   String get passphraseInputContinue => 'Weiter';
 
   @override
+  String get backupCodeInputPrompt =>
+      'Die ausgewählte Datei ist eine Sicherungsdatei, daher benötigst du den dazugehörigen 24-stelligen Sicherungscode, um fortzufahren.';
+
+  @override
+  String get backupCodeInputWrong => 'Falscher Sicherungscode.';
+
+  @override
+  String get backupCodeShowPrompt =>
+      'Der folgende 24-stellige Sicherungscode wird benötigt, um die Sicherungsdatei später zu verwenden. Bewahre ihn sicher an einem separaten Ort auf.';
+
+  @override
+  String get backupCodeShowCopy => 'Kopieren';
+
+  @override
   String get addContactClipboardEmpty => 'Die Zwischenablage ist leer.';
 
   @override
@@ -176,9 +190,6 @@ class AppLocalizationsDe extends AppLocalizations {
     );
     return '$_temp0 aus der Zwischenablage gelesen.';
   }
-
-  @override
-  String get addContactFileImport => 'Importieren';
 
   @override
   String get addContactFileFailed => 'Datei konnte nicht gelesen werden.';
@@ -299,6 +310,29 @@ class AppLocalizationsDe extends AppLocalizations {
   String get identityExpirationNever => 'Nie';
 
   @override
+  String get identityExpired => 'Abgelaufen';
+
+  @override
+  String get identityRevoked => 'Widerrufen';
+
+  @override
+  String get identityRevocationReasonNoReason => 'Kein Grund angegeben';
+
+  @override
+  String get identityRevocationReasonKeySuperseded => 'Schlüssel ersetzt';
+
+  @override
+  String get identityRevocationReasonKeyCompromised =>
+      'Schlüssel kompromittiert';
+
+  @override
+  String get identityRevocationReasonKeyRetired =>
+      'Wurde außer Betrieb genommen';
+
+  @override
+  String get identityRevocationReasonUserIdInvalid => 'Ungültige Benutzer-ID';
+
+  @override
   String get identityKeyStrength => 'Schlüsselstärke';
 
   @override
@@ -331,11 +365,62 @@ class AppLocalizationsDe extends AppLocalizations {
   String get identityActionsHeadline => 'Aktionen';
 
   @override
+  String get identityExportKey => 'Schlüssel exportieren';
+
+  @override
+  String get identityExportBackup => 'Als Sicherung exportieren';
+
+  @override
   String get identityDeleteKey => 'Schlüssel löschen';
 
   @override
   String get identityDeleteStoredPassphrase =>
       'Gespeicherte Passphrase löschen';
+
+  @override
+  String get identityBackupExported => 'Sicherung exportiert.';
+
+  @override
+  String get identityBackupExportFailed =>
+      'Sicherung konnte nicht exportiert werden.';
+
+  @override
+  String get identityKeyExported => 'Schlüssel exportiert.';
+
+  @override
+  String get identityKeyExportFailed =>
+      'Schlüssel konnte nicht exportiert werden.';
+
+  @override
+  String get identityDeleted => 'Gelöscht.';
+
+  @override
+  String get identityDeleteFailed => 'Löschen fehlgeschlagen.';
+
+  @override
+  String get identityStoredPassphraseRemoved =>
+      'Gespeicherte Passphrase entfernt.';
+
+  @override
+  String get identityStoredPassphraseRemoveFailed =>
+      'Gespeicherte Passphrase konnte nicht entfernt werden.';
+
+  @override
+  String get identityUpdatePublicKey => 'Öffentlichen Schlüssel aktualisieren';
+
+  @override
+  String get identityUpdateKey => 'Schlüssel aktualisieren';
+
+  @override
+  String identityPublicKeyUpdated(String origin) {
+    return 'Erfolgreich aktualisiert von: $origin';
+  }
+
+  @override
+  String get identityPublicKeyUpdateNoSource => 'Keine Quelle verfügbar.';
+
+  @override
+  String get identityPublicKeyUpdateFailed => 'Aktualisierung fehlgeschlagen.';
 
   @override
   String get settingsHkpKeyServers => 'HKP-Schlüsselserver';

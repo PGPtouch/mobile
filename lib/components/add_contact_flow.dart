@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:dart_pg/dart_pg.dart';
@@ -6,9 +7,11 @@ import 'package:flutter/services.dart';
 import 'package:material_graphics/material_graphics.dart';
 import 'package:material_helper/material_helper.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:mobile/components/backup_code_input.dart';
 import 'package:mobile/components/snack_bar_manager.dart';
+import 'package:mobile/key_utils.dart';
 import 'package:mobile/l10n/app_localizations.dart';
-import 'package:file_selector/file_selector.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:mobile/main.dart';
 import 'package:mobile/screens/screen_run.dart';
 import 'package:mobile/states.dart';
@@ -24,9 +27,68 @@ String? _tryDecodeUtf8(Uint8List input) {
   }
 }
 
-final _armoredPublicKeyBlock = RegExp(
-  r"-----BEGIN PGP PUBLIC KEY BLOCK-----[\s\S]*?-----END PGP PUBLIC KEY BLOCK-----",
+final _armoredKeyBlock = RegExp(
+  r"-----BEGIN PGP (PUBLIC|PRIVATE) KEY BLOCK-----[\s\S]*?-----END PGP \1 KEY BLOCK-----",
 );
+
+List<Uint8List>? _tryParseArbitraryInput(Uint8List input) {
+  try {
+    final text = _tryDecodeUtf8(input);
+    final List<Uint8List> keys;
+    if (text != null && text.contains("-----BEGIN PGP")) {
+      final normalized = text
+          .replaceAll("\r\n", "\n")
+          .replaceAll("\r", "\n")
+          .trim();
+      keys = [
+        for (final match in _armoredKeyBlock.allMatches(normalized))
+          if (match.group(1) == "PUBLIC")
+            ...OpenPGP.readPublicKeys(match.group(0)!)
+                .map((key) => key.publicKey.packetList.encode())
+          else
+            PrivateKey.fromArmored(match.group(0)!).publicKey.packetList
+                .encode(),
+      ];
+    } else {
+      final packetList = PacketList.decode(input);
+      final starts = packetList.indexOfTypes([
+        PacketType.publicKey,
+        PacketType.secretKey,
+      ]);
+      keys = [
+        for (var i = 0; i < starts.length; i++)
+          () {
+            final packets = PacketList(
+              packetList.packets.sublist(
+                starts[i],
+                i + 1 < starts.length ? starts[i + 1] : packetList.length,
+              ),
+            );
+            return packetList.packets[starts[i]].type == PacketType.publicKey
+                ? PublicKey(packets).packetList.encode()
+                : PrivateKey(packets).publicKey.packetList.encode();
+          }(),
+      ];
+    }
+    // Backups may hold both the secret and the public copy of a key.
+    final seenFingerprints = <String>{};
+    keys.removeWhere(
+      (k) => !seenFingerprints.add(
+        publicKeyFromBytes(k).fingerprint
+            .map((b) => b.toRadixString(16).padLeft(2, "0"))
+            .join(),
+      ),
+    );
+    keys.removeWhere(
+      (k) =>
+          publicKeyFromBytes(k).users
+              .any((u) => UserId.tryParse(u.userID) == null),
+    );
+    return keys.isEmpty ? null : keys;
+  } catch (_) {
+    return null;
+  }
+}
 
 String _keyStateDigest(PublicKey key) {
   final users =
@@ -63,6 +125,8 @@ class _ContactSourceChooserState extends State<_ContactSourceChooser> {
   bool _loadMode = false;
   bool _searchMode = false;
 
+  Completer<Uint8List?>? _backupCompleter;
+  String? _backupText;
   final _searchController = TextEditingController();
   String? _searchControllerError;
   bool _isSearching = false;
@@ -73,8 +137,29 @@ class _ContactSourceChooserState extends State<_ContactSourceChooser> {
 
   @override
   void dispose() {
+    final completer = _backupCompleter;
+    if (completer != null && !completer.isCompleted) completer.complete(null);
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<Uint8List?> _askBackupCode(String text) {
+    final completer = Completer<Uint8List?>();
+    _backupText = text;
+    _backupCompleter = completer;
+    _loadMode = false;
+    if (mounted) setState(() {});
+    return completer.future;
+  }
+
+  void _endBackupCode(Uint8List? decrypted) {
+    final completer = _backupCompleter;
+    if (completer == null || completer.isCompleted) return;
+    completer.complete(decrypted);
+    _backupCompleter = null;
+    _backupText = null;
+    _loadMode = true;
+    if (mounted) setState(() {});
   }
 
   void _processSelection(String source) async {
@@ -104,48 +189,21 @@ class _ContactSourceChooserState extends State<_ContactSourceChooser> {
   ) async {
     final appLocalizations = AppLocalizations.of(context);
 
-    Future<List<Uint8List>?> tryParseArbitraryInput(Uint8List input) async {
-      try {
-        final text = _tryDecodeUtf8(input);
-        final List<Uint8List> keys;
-        if (text != null && text.contains("-----BEGIN PGP")) {
-          final normalized = text
-              .replaceAll("\r\n", "\n")
-              .replaceAll("\r", "\n")
-              .trim();
-          keys = [
-            for (final match in _armoredPublicKeyBlock.allMatches(normalized))
-              ...OpenPGP.readPublicKeys(match.group(0)!)
-                  .map((key) => key.publicKey.packetList.encode()),
-          ];
-        } else {
-          final packetList = PacketList.decode(input);
-          final starts = packetList.indexOfTypes([
-            PacketType.publicKey,
-            PacketType.secretKey,
-          ]);
-          keys = [
-            for (var i = 0; i < starts.length; i++)
-              if (packetList.packets[starts[i]].type == PacketType.publicKey)
-                PublicKey(
-                  PacketList(
-                    packetList.packets.sublist(
-                      starts[i],
-                      i + 1 < starts.length ? starts[i + 1] : packetList.length,
-                    ),
-                  ),
-                ).packetList.encode(),
-          ];
-        }
-        keys.removeWhere(
-          (k) =>
-              publicKeyFromBytes(k).users
-                  .any((u) => UserId.tryParse(u.userID) == null),
-        );
-        return keys.isEmpty ? null : keys;
-      } catch (_) {
-        return null;
+    Future<(List<Uint8List>?, String?)> parseInput(
+      Uint8List data,
+      String failedMessage,
+      String Function(int count) successMessage,
+    ) async {
+      final text = _tryDecodeUtf8(data);
+      if (text != null && isBackupText(text)) {
+        final decrypted = await _askBackupCode(text);
+        if (decrypted == null) return (null, null);
+        data = decrypted;
       }
+      final input = data;
+      final value = await compute(_tryParseArbitraryInput, input);
+      if (value == null) return (null, failedMessage);
+      return (value, successMessage(value.length));
     }
 
     switch (source) {
@@ -158,21 +216,13 @@ class _ContactSourceChooserState extends State<_ContactSourceChooser> {
           return (null, appLocalizations.addContactClipboardEmpty);
         }
 
-        final value = await compute(
-          (_) => tryParseArbitraryInput(utf8.encode(data!.text!)),
-          null,
-        );
-        if (value == null) {
-          return (null, appLocalizations.addContactClipboardReadFailed);
-        }
-        return (
-          value,
-          appLocalizations.addContactClipboardReadKeys(value.length),
+        return parseInput(
+          Uint8List.fromList(utf8.encode(data!.text!)),
+          appLocalizations.addContactClipboardReadFailed,
+          appLocalizations.addContactClipboardReadKeys,
         );
       case "file":
-        final file = await openFile(
-          confirmButtonText: appLocalizations.addContactFileImport,
-        );
+        final file = await FilePicker.pickFile();
         if (file == null) return (null, null);
         Uint8List data;
         try {
@@ -180,11 +230,11 @@ class _ContactSourceChooserState extends State<_ContactSourceChooser> {
         } catch (_) {
           return (null, appLocalizations.addContactFileFailed);
         }
-        final value = await compute((_) => tryParseArbitraryInput(data), null);
-        if (value == null) {
-          return (null, appLocalizations.addContactFileReadFailed);
-        }
-        return (value, appLocalizations.addContactFileReadKeys(value.length));
+        return parseInput(
+          data,
+          appLocalizations.addContactFileReadFailed,
+          appLocalizations.addContactFileReadKeys,
+        );
     }
     return (null, null);
   }
@@ -229,7 +279,7 @@ class _ContactSourceChooserState extends State<_ContactSourceChooser> {
           UserId.defaultHkpKeyServers;
       _searchResults = await compute(
         (_) => UserId(email: query).fetchKeyFromPublicFull(
-          _KeyFetchHttpClient(),
+          KeyFetchHttpClient(),
           hkpKeyServers: hkpKeyServers,
         ),
         null,
@@ -316,21 +366,13 @@ class _ContactSourceChooserState extends State<_ContactSourceChooser> {
 
             var keyIdentitiesVerifies = false;
 
-            var title = switch (result.origin) {
-              .webKeyDirectoryAdvanced =>
-                appLocalizations.keyFetchOriginWebKeyDirectoryAdvanced,
-              .webKeyDirectoryDirect =>
-                appLocalizations.keyFetchOriginWebKeyDirectoryDirect,
-              .hkpKeyServer => appLocalizations.keyFetchOriginHkpKeyServer,
-              null => result.originHost!,
-            };
-            if (result.originHost?.split("|").length == 3) {
-              title = appLocalizations.keyFetchKeyserverTitle(
-                result.originHost!.split("|")[1],
-              );
-              keyIdentitiesVerifies =
-                  result.originHost!.split("|")[2] == "true";
-            }
+            final source = keyFetchSourceTitle(
+              appLocalizations,
+              origin: result.origin,
+              originHost: result.originHost,
+            );
+            final title = source.title;
+            keyIdentitiesVerifies = source.keyIdentitiesVerifies;
             final isPrimary =
                 result.origin == _searchResults.first.origin &&
                 _searchResults.first.keys.length == 1 &&
@@ -526,6 +568,20 @@ class _ContactSourceChooserState extends State<_ContactSourceChooser> {
         ),
       );
     }();
+    final modeBackup = _backupCompleter != null
+        ? BackupCodeInput(
+            key: ValueKey("modeBackup"),
+            onSubmit: (backupCode) async {
+              final decrypted = await decryptBackup(_backupText!, backupCode);
+              if (decrypted == null) {
+                return appLocalizations.backupCodeInputWrong;
+              }
+              _endBackupCode(decrypted);
+              return null;
+            },
+            onCancel: () => _endBackupCode(null),
+          )
+        : null;
     final modeLoading = SafeArea(
       key: ValueKey("modeLoading"),
       child: SizedBox(
@@ -575,7 +631,9 @@ class _ContactSourceChooserState extends State<_ContactSourceChooser> {
               ],
             );
           },
-          child: _loadMode
+          child: _backupCompleter != null
+              ? modeBackup!
+              : _loadMode
               ? modeLoading
               : _searchMode
               ? modeSearching
@@ -594,7 +652,7 @@ Future<List<Uint8List>?> startAddContactFlow(BuildContext context) async =>
       builder: (_) => _ContactSourceChooser(),
     );
 
-class _KeyFetchHttpClient implements user_id.HttpClientProvider {
+class KeyFetchHttpClient implements user_id.HttpClientProvider {
   @override
   Future<HttpResponse> send(HttpRequest request) async {
     if (request.url.scheme != "https") {

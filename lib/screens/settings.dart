@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:material_helper/material_helper.dart';
 import 'package:mobile/generated/gitbaker.g.dart';
@@ -61,7 +62,7 @@ Future<void> settings(BuildContext context) async => showSettingsScreen(
             CustomSettingsOption(
               icon: Icon(Icons.delete),
               title: appLocalizations.settingsDeleteStoredPassphrases,
-              onTap: () {},
+              onTap: null,
             ),
             CustomSettingsOption(
               icon: Icon(Icons.info_outline),
@@ -76,6 +77,22 @@ Future<void> settings(BuildContext context) async => showSettingsScreen(
             ),
           ],
         ),
+        if (kDebugMode)
+          SettingsSection(
+            headline: "Framework tests",
+            options: [
+              SettingsOptionBuilder(
+                builder: (_, _) => Row(
+                  mainAxisSize: .max,
+                  mainAxisAlignment: .spaceEvenly,
+                  children: [
+                    MaterialLoadingIndicator(),
+                    MaterialLoadingIndicator(style: .contained),
+                  ],
+                ),
+              ),
+            ],
+          ),
       ],
     );
   },

@@ -160,6 +160,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get passphraseInputContinue => 'Continue';
 
   @override
+  String get backupCodeInputPrompt =>
+      'The selected file is a Backup File, so you need the designated 24 character backup code to proceed.';
+
+  @override
+  String get backupCodeInputWrong => 'Wrong backup code.';
+
+  @override
+  String get backupCodeShowPrompt =>
+      'The following 24 character backup code is needed to use the Backup File later on. Store it securely in a separate location away from the Backup File.';
+
+  @override
+  String get backupCodeShowCopy => 'Copy';
+
+  @override
   String get addContactClipboardEmpty => 'Clipboard is empty.';
 
   @override
@@ -176,9 +190,6 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return 'Read $_temp0 from clipboard.';
   }
-
-  @override
-  String get addContactFileImport => 'Import';
 
   @override
   String get addContactFileFailed => 'Failed to read file.';
@@ -295,6 +306,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get identityExpirationNever => 'Never';
 
   @override
+  String get identityExpired => 'Expired';
+
+  @override
+  String get identityRevoked => 'Revoked';
+
+  @override
+  String get identityRevocationReasonNoReason => 'No reason given';
+
+  @override
+  String get identityRevocationReasonKeySuperseded => 'Key superseded';
+
+  @override
+  String get identityRevocationReasonKeyCompromised => 'Key compromised';
+
+  @override
+  String get identityRevocationReasonKeyRetired => 'Has been retired';
+
+  @override
+  String get identityRevocationReasonUserIdInvalid => 'Invalid user ID';
+
+  @override
   String get identityKeyStrength => 'Key strength';
 
   @override
@@ -327,10 +359,58 @@ class AppLocalizationsEn extends AppLocalizations {
   String get identityActionsHeadline => 'Actions';
 
   @override
+  String get identityExportKey => 'Export key';
+
+  @override
+  String get identityExportBackup => 'Export as backup';
+
+  @override
   String get identityDeleteKey => 'Delete key';
 
   @override
   String get identityDeleteStoredPassphrase => 'Delete stored passphrase';
+
+  @override
+  String get identityBackupExported => 'Backup exported.';
+
+  @override
+  String get identityBackupExportFailed => 'Failed to export backup.';
+
+  @override
+  String get identityKeyExported => 'Key exported.';
+
+  @override
+  String get identityKeyExportFailed => 'Failed to export key.';
+
+  @override
+  String get identityDeleted => 'Deleted.';
+
+  @override
+  String get identityDeleteFailed => 'Failed to delete.';
+
+  @override
+  String get identityStoredPassphraseRemoved => 'Stored passphrase removed.';
+
+  @override
+  String get identityStoredPassphraseRemoveFailed =>
+      'Failed to remove stored passphrase.';
+
+  @override
+  String get identityUpdatePublicKey => 'Update public key';
+
+  @override
+  String get identityUpdateKey => 'Update key';
+
+  @override
+  String identityPublicKeyUpdated(String origin) {
+    return 'Updated successfully from: $origin';
+  }
+
+  @override
+  String get identityPublicKeyUpdateNoSource => 'No source available.';
+
+  @override
+  String get identityPublicKeyUpdateFailed => 'Failed to update.';
 
   @override
   String get settingsHkpKeyServers => 'HKP key servers';

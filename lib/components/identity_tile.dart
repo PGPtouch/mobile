@@ -1,15 +1,28 @@
+import 'dart:convert';
+import 'dart:math' as math;
+
 import 'package:dart_pg/dart_pg.dart';
+// ignore: implementation_imports
+import 'package:dart_pg/src/enum/revocation_reason_tag.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:icon_craft/icon_craft.dart';
 import 'package:intl/intl.dart';
 import 'package:material_graphics/material_graphics.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:material_helper/material_helper.dart';
+import 'package:mobile/components/add_contact_flow.dart';
+import 'package:mobile/components/backup_code_input.dart';
+import 'package:mobile/components/snack_bar_manager.dart';
+import 'package:mobile/key_utils.dart';
 import 'package:mobile/l10n/app_localizations.dart';
+import 'package:mobile/main.dart';
 import 'package:mobile/screens/screen_run.dart';
 import 'package:shared/shared.dart';
 
+import '../screens/screen_contacts.dart';
 import '../database/key_store.dart' as key_store;
 import '../database/contact_store.dart' as contact_store;
 
@@ -48,6 +61,42 @@ final class IdentityContactInterchangeableHandler<T extends Object> {
     throw Exception("Invalid data type");
   }
 
+  bool? get isRevoked {
+    if (data is key_store.Key) {
+      return (data as key_store.Key).isRevoked;
+    } else if (data is contact_store.Contact) {
+      return (data as contact_store.Contact).isRevoked;
+    }
+    return null;
+  }
+
+  ({RevocationReasonTag? tag, String description})? revocationReason() {
+    if (data is key_store.Key) {
+      return publicKeyRevocationReason((data as key_store.Key).publicData);
+    } else if (data is contact_store.Contact) {
+      return publicKeyRevocationReason((data as contact_store.Contact).data);
+    }
+    return null;
+  }
+
+  DateTime get createdAt {
+    if (data is key_store.Key) {
+      return (data as key_store.Key).createdAt;
+    } else if (data is contact_store.Contact) {
+      return (data as contact_store.Contact).createdAt;
+    }
+    throw Exception("Invalid data type");
+  }
+
+  DateTime? get expiresAt {
+    if (data is key_store.Key) {
+      return (data as key_store.Key).expiresAt;
+    } else if (data is contact_store.Contact) {
+      return (data as contact_store.Contact).expiresAt;
+    }
+    throw Exception("Invalid data type");
+  }
+
   void addListener(VoidCallback listener) {
     if (data is key_store.Key) {
       key_store.KeyStoreHandler.instance.addListener(listener);
@@ -69,22 +118,238 @@ final class IdentityContactInterchangeableHandler<T extends Object> {
   Future<bool?> hasKeyPassphrase() async {
     if (data is key_store.Key) {
       return key_store.KeyStoreHandler.instance.hasKeyPassphrase(fingerprint);
+    }
+    return null;
+  }
+
+  bool get exportableAsBackup => data is key_store.Key;
+
+  Future<void> export({
+    bool asBackup = false,
+    List<UserIdInterchangeableHandler>? userIds,
+    required BuildContext context,
+  }) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final appLocalizations = AppLocalizations.of(context);
+    final exportAsBackup = data is key_store.Key && asBackup;
+    final exportData = await compute(
+      (_) => switch (data.runtimeType) {
+        key_store.Key => PrivateKey(
+          PacketList.decode((data as key_store.Key).privateData),
+        ),
+        contact_store.Contact => PublicKey(
+          PacketList.decode((data as contact_store.Contact).data),
+        ),
+        _ => throw Exception("Invalid data type"),
+      },
+      null,
+    );
+
+    Future<({String backupCode, String data})> backupFormat() async {
+      assert(
+        exportAsBackup,
+        "Backup format can only be used for key_store.Key with asBackup=true",
+      );
+
+      final rng = math.Random.secure();
+      final rngCharList = backupCodeCharacters;
+      var backupCode = StringBuffer();
+      for (var i = 0; i < 24; i++) {
+        if (i % 4 == 0 && i != 0) backupCode.write("-");
+        backupCode.write(rngCharList[rng.nextInt(rngCharList.length)]);
+      }
+
+      final backup = (await compute(
+        (data) => OpenPGP.encryptCleartext(
+          data,
+          passwords: [backupCode.toString()],
+        ).armor(),
+        exportData.armor(),
+      )).replaceFirst("\n\n", "\nBackupVersion: 2\n\n");
+
+      return (backupCode: backupCode.toString(), data: backup);
+    }
+
+    final userIdsToFileName =
+        userIds?.map((u) => u.name?.trim().replaceAll(" ", "_")).join("-") ??
+        "Unknown";
+
+    if (exportAsBackup) {
+      final backup = await backupFormat();
+      if (!context.mounted) return;
+      final confirmed = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        clipBehavior: Clip.antiAlias,
+        builder: (context) => BackupCodeOutput(backupCode: backup.backupCode),
+      );
+      if (confirmed != true) return;
+      if (context.mounted) Navigator.of(context).pop();
+      try {
+        final path = await FilePicker.saveFile(
+          fileName: "$userIdsToFileName.asc",
+          bytes: utf8.encode(backup.data),
+        );
+        if (path != null) {
+          SnackBarManager.showSnackBarOn(
+            messenger,
+            appLocalizations.identityBackupExported,
+          );
+        }
+      } catch (_) {
+        SnackBarManager.showSnackBarOn(
+          messenger,
+          appLocalizations.identityBackupExportFailed,
+        );
+      }
     } else {
-      return null;
+      if (context.mounted) Navigator.of(context).pop();
+      try {
+        final path = await FilePicker.saveFile(
+          fileName: "$userIdsToFileName.pgp",
+          bytes: exportData.packetList.encode(),
+        );
+        if (path != null) {
+          SnackBarManager.showSnackBarOn(
+            messenger,
+            appLocalizations.identityKeyExported,
+          );
+        }
+      } catch (_) {
+        SnackBarManager.showSnackBarOn(
+          messenger,
+          appLocalizations.identityKeyExportFailed,
+        );
+      }
     }
   }
 
+  Future<String> updatePublicKey(
+    BuildContext context, {
+    required String email,
+  }) async {
+    if (data is! key_store.Key && data is! contact_store.Contact) {
+      throw Exception("Invalid key data");
+    }
+
+    final size = MediaQuery.sizeOf(context);
+    final appLocalizations = AppLocalizations.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      clipBehavior: Clip.antiAlias,
+      builder: (_) => SizedBox(
+        width: double.infinity,
+        child: SafeArea(
+          key: ValueKey("modeLoading"),
+          child: SizedBox(
+            height: size.height / 6,
+            child: Center(
+              child: MaterialLoadingIndicator(
+                size: MaterialLoadingIndicatorSizes.large,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final hkpKeyServers =
+        prefs
+            ?.getStringList("hkp_key_servers")
+            ?.map(
+              (s) => UserId.commonHkpKeyServers.firstWhereOrNull(
+                (c) => c.host == s,
+              ),
+            )
+            .whereType<HkpKeyServer>()
+            .toList() ??
+        UserId.defaultHkpKeyServers;
+    final update = await compute(
+      (data) => UserId(email: data.email).fetchKeyFromPublic(
+        KeyFetchHttpClient(),
+        fingerprints: [data.fingerprint],
+        hkpKeyServers: hkpKeyServers,
+      ),
+      (email: email, fingerprint: fingerprint),
+    );
+    if (update == null) {
+      throw Exception("No source available");
+    }
+
+    if (!publicKeysMatch(update.keys.first.bytes, publicData)) {
+      throw Exception("Public key mismatch");
+    }
+
+    final newParsedKey = await compute(
+      (bytes) => publicKeyFromBytes(bytes),
+      update.keys.first.bytes,
+    );
+    final users = newParsedKey.users
+        .map((u) => UserId.tryParse(u.userID)?.toString())
+        .whereType<String>()
+        .toList();
+
+    if (data is key_store.KeyStore) {
+      final keyStore = key_store.KeyStoreHandler.instance.keyStore!;
+      await keyStore.updateKey(
+        key_store.KeysCompanion(
+          id: .new(id),
+          fingerprint: .new(newParsedKey.fingerprint),
+          publicData: .new(update.keys.first.bytes),
+          privateData: .new((data as key_store.Key).privateData),
+          isRevoked: .new(isPublicKeyDataRevoked(update.keys.first.bytes)),
+          createdAt: .new(newParsedKey.creationTime),
+          expiresAt: .new(keyExpirationTime(newParsedKey)),
+        ),
+        users,
+      );
+    } else {
+      contactStore.updateContact(
+        contact_store.ContactsCompanion(
+          id: .new(id),
+          fingerprint: .new(newParsedKey.fingerprint),
+          data: .new(update.keys.first.bytes),
+          isRevoked: .new(isPublicKeyDataRevoked(update.keys.first.bytes)),
+          createdAt: .new(newParsedKey.creationTime),
+          expiresAt: .new(keyExpirationTime(newParsedKey)),
+        ),
+        users,
+      );
+    }
+
+    return keyFetchSourceTitle(
+      appLocalizations,
+      origin: update.origin,
+      originHost: update.originHost,
+    ).title;
+  }
+
   Future<void> delete() async {
-    final keyStore = key_store.KeyStoreHandler.instance.keyStore!;
-    await keyStore.transaction(() async {
-      await (keyStore.delete(
-        keyStore.keys,
-      )..where((c) => c.id.equals(id))).go();
-      await (keyStore.delete(
-        keyStore.keyUserIds,
-      )..where((c) => c.parent.equals(id))).go();
-    });
-    await key_store.KeyStoreHandler.instance.deleteKeyPassphrase(fingerprint);
+    if (data is key_store.Key) {
+      final keyStore = key_store.KeyStoreHandler.instance.keyStore!;
+      await keyStore.transaction(() async {
+        await (keyStore.delete(
+          keyStore.keys,
+        )..where((c) => c.id.equals(id))).go();
+        await (keyStore.delete(
+          keyStore.keyUserIds,
+        )..where((c) => c.parent.equals(id))).go();
+      });
+      await key_store.KeyStoreHandler.instance.deleteKeyPassphrase(fingerprint);
+    } else if (data is contact_store.Contact) {
+      await contactStore.transaction(() async {
+        await (contactStore.delete(
+          contactStore.contacts,
+        )..where((c) => c.id.equals(id))).go();
+        await (contactStore.delete(
+          contactStore.contactUserIds,
+        )..where((c) => c.parent.equals(id))).go();
+      });
+    } else {
+      throw Exception("Invalid data type");
+    }
   }
 
   Future<void> deleteKeyPassphrase() async {
@@ -93,6 +358,77 @@ final class IdentityContactInterchangeableHandler<T extends Object> {
     } else {
       throw Exception("Invalid data type");
     }
+  }
+}
+
+class BackupCodeOutput extends StatefulWidget {
+  final String backupCode;
+  const new({super.key, required this.backupCode});
+
+  @override
+  State<BackupCodeOutput> createState() => _BackupCodeOutputState();
+}
+
+class _BackupCodeOutputState extends State<BackupCodeOutput> {
+  var copied = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final appLocalizations = AppLocalizations.of(context);
+    final textTheme = TextTheme.of(context);
+
+    final backupCodeParts = widget.backupCode.split("-");
+    final backupCodeFormatted = StringBuffer();
+    for (var i = 0; i < backupCodeParts.length; i++) {
+      backupCodeFormatted
+        ..write(backupCodeParts[i])
+        ..write(i.isEven ? " - " : " -\n");
+    }
+
+    return Padding(
+      padding:
+          MediaQuery.viewInsetsOf(context) +
+          MediaQuery.paddingOf(context) +
+          const EdgeInsets.all(16).copyWith(top: 14, bottom: 8),
+      child: Column(
+        mainAxisSize: .min,
+        crossAxisAlignment: .center,
+        children: [
+          Text(
+            hyphenate(appLocalizations.backupCodeShowPrompt),
+            textAlign: .justify,
+          ),
+          SizedBox(height: 20),
+          Text(
+            backupCodeFormatted.toString().trim(),
+            style: textTheme.headlineSmall!.googleSansCode,
+          ),
+          SizedBox(height: 20),
+          Row(
+            mainAxisSize: .max,
+            children: [
+              Expanded(child: SizedBox()),
+              FilledButton.icon(
+                onPressed: () {
+                  copyData(context, widget.backupCode);
+                  copied = true;
+                  if (mounted) setState(() {});
+                },
+                icon: Icon(Icons.copy),
+                label: Text(appLocalizations.backupCodeShowCopy),
+              ),
+              SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: copied
+                    ? () => Navigator.of(context).pop(true)
+                    : null,
+                label: Text(appLocalizations.passphraseInputContinue),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -178,14 +514,14 @@ class IdentityTile<K extends Object, U extends Object> extends StatefulWidget {
   final IdentityContactInterchangeableHandler<K> keyData;
   final List<UserIdInterchangeableHandler<U>> userIds;
   final VoidCallback? onTap;
-  final VoidCallback? onIdentityDeleted;
+  final VoidCallback? onDeleted;
 
   const new({
     super.key,
     required this.keyData,
     required this.userIds,
     this.onTap,
-    this.onIdentityDeleted,
+    this.onDeleted,
   });
 
   @override
@@ -195,6 +531,7 @@ class IdentityTile<K extends Object, U extends Object> extends StatefulWidget {
 class _IdentityTileState extends State<IdentityTile> {
   PublicKey? _parsedKey;
   bool? _passphraseIsStored;
+  ({RevocationReasonTag? tag, String description})? _revocationReason;
 
   @override
   void initState() {
@@ -217,6 +554,7 @@ class _IdentityTileState extends State<IdentityTile> {
   void _parseKey(Uint8List keyData) async {
     _parsedKey = await compute((_) => publicKeyFromBytes(keyData), null);
     _passphraseIsStored = await widget.keyData.hasKeyPassphrase();
+    _revocationReason = widget.keyData.revocationReason();
     if (mounted) setState(() {});
   }
 
@@ -234,9 +572,21 @@ class _IdentityTileState extends State<IdentityTile> {
     final colorScheme = ColorScheme.of(context);
     final textTheme = TextTheme.of(context);
 
-    final users = widget.userIds.map(
-      (user) => IdentityTileUserIdChip(user: user),
-    );
+    final isExpired =
+        widget.keyData.expiresAt != null &&
+        widget.keyData.expiresAt!.isBefore(DateTime.now());
+    final isRevoked = widget.keyData.isRevoked ?? false;
+
+    final fgColor = isExpired || isRevoked
+        ? colorScheme.onErrorContainer
+        : null;
+    final tileColor = isExpired || isRevoked
+        ? colorScheme.errorContainer
+        : null;
+
+    final users = widget.userIds
+        .map((user) => IdentityTileUserIdChip(user: user))
+        .toList();
 
     void showDetailScreen() => showModalBottomSheet(
       context: context,
@@ -244,17 +594,55 @@ class _IdentityTileState extends State<IdentityTile> {
       clipBehavior: Clip.antiAlias,
       builder: (context) => IdentityDetailScreen(
         users: users,
+        userIds: widget.userIds,
         parsedKey: _parsedKey,
         keyData: widget.keyData,
         passphraseIsStored: _passphraseIsStored,
-        onIdentityDeleted: widget.onIdentityDeleted,
+        isExpired: isExpired,
+        isRevoked: isRevoked,
+        revocationReason: _revocationReason,
+        onDeleted: widget.onDeleted,
       ),
     );
 
     return MaterialListTile(
       title: Padding(
         padding: const EdgeInsets.only(bottom: 8),
-        child: Wrap(spacing: 2, runSpacing: 2, children: users.toList()),
+        child: Wrap(
+          spacing: 2,
+          runSpacing: 2,
+          crossAxisAlignment: .center,
+          children: [
+            ...users,
+            if (isExpired || isRevoked)
+              Padding(
+                padding: const EdgeInsetsDirectional.only(start: 14),
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      WidgetSpan(
+                        child: Icon(
+                          Icons.warning_amber_outlined,
+                          size: textTheme.bodySmall?.fontSize,
+                          color: fgColor,
+                        ),
+                        alignment: .middle,
+                      ),
+                      TextSpan(text: " "),
+                      TextSpan(
+                        text: isExpired
+                            ? appLocalizations.identityExpired
+                            : appLocalizations.identityRevoked,
+                      ),
+                    ],
+                  ),
+                  style: textTheme.bodySmall!.copyWith(color: fgColor),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+          ],
+        ),
       ),
       subtitle: Builder(
         builder: (context) => Column(
@@ -268,34 +656,32 @@ class _IdentityTileState extends State<IdentityTile> {
                     child: Icon(
                       Icons.edit_calendar,
                       size: textTheme.bodySmall?.fontSize,
+                      color: fgColor,
                     ),
                     alignment: .middle,
                   ),
                   TextSpan(text: " "),
                   TextSpan(
-                    text: _parsedKey?.creationTime != null
-                        ? DateFormat.yMMMd(appLocalizations.localeName)
-                              .add_Hm()
-                              .format(_parsedKey!.creationTime)
-                        : appLocalizations.valueMissing,
+                    text: DateFormat.yMMMd(appLocalizations.localeName)
+                        .add_Hm()
+                        .format(widget.keyData.createdAt),
                   ),
                   TextSpan(text: " " * 4),
                   WidgetSpan(
                     child: Icon(
                       Icons.event_busy,
                       size: textTheme.bodySmall?.fontSize,
+                      color: fgColor,
                     ),
                     alignment: .middle,
                   ),
                   TextSpan(text: " "),
                   TextSpan(
-                    text: _parsedKey != null
-                        ? _parsedKey!.expirationTime != null
-                              ? DateFormat.yMMMd(appLocalizations.localeName)
-                                    .add_Hm()
-                                    .format(_parsedKey!.expirationTime!)
-                              : appLocalizations.identityExpirationNever
-                        : appLocalizations.valueMissing,
+                    text: widget.keyData.expiresAt != null
+                        ? DateFormat.yMMMd(appLocalizations.localeName)
+                              .add_Hm()
+                              .format(widget.keyData.expiresAt!)
+                        : appLocalizations.identityExpirationNever,
                   ),
                   if (_passphraseIsStored == true) ...[
                     TextSpan(text: " " * 4),
@@ -325,7 +711,7 @@ class _IdentityTileState extends State<IdentityTile> {
                   ],
                 ],
               ),
-              style: textTheme.bodySmall,
+              style: textTheme.bodySmall!.copyWith(color: fgColor),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -335,7 +721,9 @@ class _IdentityTileState extends State<IdentityTile> {
                 formatFingerprint(widget.keyData.fingerprint)
                     .replaceAll(" ", "")
                     .replaceFirst("\n", ""),
-                style: textTheme.bodySmall!.googleSansCode,
+                style: textTheme.bodySmall!.googleSansCode.copyWith(
+                  color: fgColor,
+                ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -343,28 +731,39 @@ class _IdentityTileState extends State<IdentityTile> {
           ],
         ),
       ),
-      trailing: widget.onTap != null ? Icon(Icons.chevron_right) : null,
+      tileColor: tileColor,
+      trailing: widget.onTap != null && !(isExpired || isRevoked)
+          ? Icon(Icons.chevron_right)
+          : null,
       isThreeLine: true,
-      onTap: widget.onTap,
+      onTap: !(isExpired || isRevoked) ? widget.onTap : null,
       onLongPress: _parsedKey != null ? () => showDetailScreen() : null,
     );
   }
 }
 
 class IdentityDetailScreen<K extends Object> extends StatelessWidget {
-  final Iterable<IdentityTileUserIdChip> _users;
-  final PublicKey? _parsedKey;
-  final IdentityContactInterchangeableHandler<K> _keyData;
-  final bool? _passphraseIsStored;
-  final VoidCallback? _onIdentityDeleted;
+  final List<IdentityTileUserIdChip> users;
+  final List<UserIdInterchangeableHandler> userIds;
+  final PublicKey? parsedKey;
+  final IdentityContactInterchangeableHandler<K> keyData;
+  final bool? passphraseIsStored;
+  final bool isExpired;
+  final bool isRevoked;
+  final ({RevocationReasonTag? tag, String description})? revocationReason;
+  final VoidCallback? onDeleted;
 
   const new({
     super.key,
-    required this._users,
-    required this._parsedKey,
-    required this._keyData,
-    required this._passphraseIsStored,
-    required this._onIdentityDeleted,
+    required this.users,
+    required this.userIds,
+    required this.parsedKey,
+    required this.keyData,
+    required this.passphraseIsStored,
+    required this.isExpired,
+    required this.isRevoked,
+    required this.revocationReason,
+    required this.onDeleted,
   });
 
   @override
@@ -388,7 +787,7 @@ class IdentityDetailScreen<K extends Object> extends StatelessWidget {
                 title: Wrap(
                   spacing: 2,
                   runSpacing: 2,
-                  children: _users.toList(),
+                  children: users.toList(),
                 ),
                 backgroundStyle: .lightened,
               ),
@@ -397,30 +796,64 @@ class IdentityDetailScreen<K extends Object> extends StatelessWidget {
                   Text(appLocalizations.identityDetailsHeadline),
                 ),
                 [
+                  if (isRevoked && revocationReason != null)
+                    MaterialListTile(
+                      leading: Icon(
+                        Icons.block,
+                        color: colorScheme.onErrorContainer,
+                      ),
+                      title: Text(appLocalizations.identityRevoked),
+                      subtitle: revocationReason!.description.isNotEmpty
+                          ? Text(revocationReason!.description, maxLines: 2)
+                          : null,
+                      trailing: revocationReason!.tag != null
+                          ? Text(switch (revocationReason!.tag!) {
+                              RevocationReasonTag.noReason =>
+                                appLocalizations
+                                    .identityRevocationReasonNoReason,
+                              RevocationReasonTag.keySuperseded =>
+                                appLocalizations
+                                    .identityRevocationReasonKeySuperseded,
+                              RevocationReasonTag.keyCompromised =>
+                                appLocalizations
+                                    .identityRevocationReasonKeyCompromised,
+                              RevocationReasonTag.keyRetired =>
+                                appLocalizations
+                                    .identityRevocationReasonKeyRetired,
+                              RevocationReasonTag.userIDInvalid =>
+                                appLocalizations
+                                    .identityRevocationReasonUserIdInvalid,
+                            })
+                          : null,
+                      tileColor: colorScheme.errorContainer,
+                      textColor: colorScheme.onErrorContainer,
+                      backgroundStyle: .lightened,
+                    ),
                   MaterialListTile(
                     leading: Icon(Icons.edit_calendar),
                     title: Text(appLocalizations.identityCreation),
                     subtitle: Text(
-                      _parsedKey?.creationTime != null
-                          ? DateFormat.yMMMd(appLocalizations.localeName)
-                                .add_Hm()
-                                .format(_parsedKey!.creationTime)
-                          : appLocalizations.valueMissing,
+                      DateFormat.yMMMd(appLocalizations.localeName)
+                          .add_Hm()
+                          .format(keyData.createdAt),
                     ),
                     backgroundStyle: .lightened,
                   ),
                   MaterialListTile(
-                    leading: Icon(Icons.event_busy),
+                    leading: Icon(
+                      Icons.event_busy,
+                      color: isExpired ? colorScheme.onErrorContainer : null,
+                    ),
                     title: Text(appLocalizations.identityExpiration),
                     subtitle: Text(
-                      _parsedKey != null
-                          ? _parsedKey!.expirationTime != null
-                                ? DateFormat.yMMMd(appLocalizations.localeName)
-                                      .add_Hm()
-                                      .format(_parsedKey!.expirationTime!)
-                                : appLocalizations.identityExpirationNever
-                          : appLocalizations.valueMissing,
+                      keyData.expiresAt != null
+                          ? DateFormat.yMMMd(appLocalizations.localeName)
+                                .add_Hm()
+                                .format(keyData.expiresAt!)
+                          : appLocalizations.identityExpirationNever,
                     ),
+                    tileColor: isExpired ? colorScheme.errorContainer : null,
+                    textColor: isExpired ? colorScheme.onErrorContainer : null,
                     backgroundStyle: .lightened,
                   ),
                 ],
@@ -430,8 +863,8 @@ class IdentityDetailScreen<K extends Object> extends StatelessWidget {
                   leading: Icon(Icons.sports_mma),
                   title: Text(appLocalizations.identityKeyStrength),
                   subtitle: Text(
-                    _parsedKey?.keyStrength != null
-                        ? _parsedKey!.keyStrength.toString()
+                    parsedKey?.keyStrength != null
+                        ? parsedKey!.keyStrength.toString()
                         : appLocalizations.valueMissing,
                   ),
                   backgroundStyle: .lightened,
@@ -440,8 +873,8 @@ class IdentityDetailScreen<K extends Object> extends StatelessWidget {
                   leading: Icon(Icons.numbers),
                   title: Text(appLocalizations.identityKeyVersion),
                   subtitle: Text(
-                    _parsedKey?.version != null
-                        ? _parsedKey!.version.toString()
+                    parsedKey?.version != null
+                        ? parsedKey!.version.toString()
                         : appLocalizations.valueMissing,
                   ),
                   backgroundStyle: .lightened,
@@ -453,8 +886,8 @@ class IdentityDetailScreen<K extends Object> extends StatelessWidget {
                   title: Text(appLocalizations.identityKeyId),
                   subtitle: Builder(
                     builder: (context) => Text(
-                      _parsedKey?.keyID != null
-                          ? _parsedKey!.keyID
+                      parsedKey?.keyID != null
+                          ? parsedKey!.keyID
                                 .map((e) => e.toRadixString(16))
                                 .join()
                                 .toUpperCase()
@@ -469,21 +902,21 @@ class IdentityDetailScreen<K extends Object> extends StatelessWidget {
                   title: Text(appLocalizations.identityFingerprint),
                   subtitle: Builder(
                     builder: (context) => Text(
-                      formatFingerprint(_keyData.fingerprint),
+                      formatFingerprint(keyData.fingerprint),
                       style: DefaultTextStyle.of(context).style.googleSansCode,
                     ),
                   ),
                   backgroundStyle: .lightened,
                 ),
               ]),
-              if (_passphraseIsStored != null)
+              if (passphraseIsStored != null)
                 MaterialListTile(
                   leading: Icon(
-                    _passphraseIsStored == true
+                    passphraseIsStored == true
                         ? Icons.bookmark
                         : Icons.bookmark_border,
-                    color: _passphraseIsStored != null
-                        ? _passphraseIsStored!
+                    color: passphraseIsStored != null
+                        ? passphraseIsStored!
                               ? Colors.lightBlueAccent.harmonizeWith(
                                   colorScheme.primary,
                                 )
@@ -491,42 +924,129 @@ class IdentityDetailScreen<K extends Object> extends StatelessWidget {
                         : null,
                   ),
                   title: Text(
-                    _passphraseIsStored == true
+                    passphraseIsStored == true
                         ? appLocalizations.identityPassphraseStored
                         : appLocalizations.identityPassphraseNotStored,
                   ),
                   backgroundStyle: .lightened,
                 ),
-              if (_onIdentityDeleted != null || _passphraseIsStored == true)
-                ...MaterialListTile.group(
-                  headline: MaterialListTileHeadline(
-                    Text(appLocalizations.identityActionsHeadline),
-                  ),
-                  [
-                    if (_onIdentityDeleted != null)
-                      MaterialListTile(
-                        leading: Icon(Icons.delete_outline),
-                        title: Text(appLocalizations.identityDeleteKey),
-                        backgroundStyle: .lightened,
-                        onTap: () async {
-                          Navigator.of(context).pop();
-                          _onIdentityDeleted.call();
-                        },
-                      ),
-                    if (_passphraseIsStored == true)
-                      MaterialListTile(
-                        leading: Icon(Icons.remove_red_eye_outlined),
-                        title: Text(
-                          appLocalizations.identityDeleteStoredPassphrase,
-                        ),
-                        backgroundStyle: .lightened,
-                        onTap: () {
-                          Navigator.of(context).pop();
-                          _keyData.deleteKeyPassphrase();
-                        },
-                      ),
-                  ],
+              ...MaterialListTile.group(
+                headline: MaterialListTileHeadline(
+                  Text(appLocalizations.identityActionsHeadline),
                 ),
+                [
+                  MaterialListTile(
+                    leading: Icon(Icons.file_upload_outlined),
+                    title: Text(appLocalizations.identityExportKey),
+                    backgroundStyle: .lightened,
+                    onTap: () =>
+                        keyData.export(userIds: userIds, context: context),
+                  ),
+                  if (keyData.exportableAsBackup)
+                    MaterialListTile(
+                      leading: IconCraft(
+                        Icon(Icons.file_upload_outlined),
+                        Icon(Icons.cloud),
+                        alignment: Alignment.bottomRight,
+                        decoration: IconDecoration(
+                          border: IconBorder(
+                            color: colorScheme.brightness == Brightness.light
+                                ? colorScheme.surfaceContainerLowest
+                                : colorScheme.surfaceBright,
+                          ),
+                        ),
+                      ),
+                      title: Text(appLocalizations.identityExportBackup),
+                      backgroundStyle: .lightened,
+                      onTap: () => keyData.export(
+                        asBackup: true,
+                        userIds: userIds,
+                        context: context,
+                      ),
+                    ),
+                  MaterialListTile(
+                    leading: Icon(Icons.sync),
+                    title: Text(
+                      keyData.exportableAsBackup
+                          ? appLocalizations.identityUpdatePublicKey
+                          : appLocalizations.identityUpdateKey,
+                    ),
+                    backgroundStyle: .lightened,
+                    onTap: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      try {
+                        final origin = await keyData.updatePublicKey(
+                          context,
+                          email: userIds.first.email,
+                        );
+                        SnackBarManager.showSnackBarOn(
+                          messenger,
+                          appLocalizations.identityPublicKeyUpdated(origin),
+                        );
+                      } catch (e) {
+                        SnackBarManager.showSnackBarOn(
+                          messenger,
+                          e.toString().contains("available")
+                              ? appLocalizations.identityPublicKeyUpdateNoSource
+                              : appLocalizations.identityPublicKeyUpdateFailed,
+                        );
+                      } finally {
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).pop();
+                        }
+                      }
+                    },
+                  ),
+                  MaterialListTile(
+                    leading: Icon(Icons.delete_outline),
+                    title: Text(appLocalizations.identityDeleteKey),
+                    backgroundStyle: .lightened,
+                    onTap: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      Navigator.of(context).pop();
+                      try {
+                        await keyData.delete();
+                        onDeleted?.call();
+                        SnackBarManager.showSnackBarOn(
+                          messenger,
+                          appLocalizations.identityDeleted,
+                        );
+                      } catch (_) {
+                        SnackBarManager.showSnackBarOn(
+                          messenger,
+                          appLocalizations.identityDeleteFailed,
+                        );
+                      }
+                    },
+                  ),
+                  if (passphraseIsStored == true)
+                    MaterialListTile(
+                      leading: Icon(Icons.remove_red_eye_outlined),
+                      title: Text(
+                        appLocalizations.identityDeleteStoredPassphrase,
+                      ),
+                      backgroundStyle: .lightened,
+                      onTap: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        Navigator.of(context).pop();
+                        try {
+                          await keyData.deleteKeyPassphrase();
+                          SnackBarManager.showSnackBarOn(
+                            messenger,
+                            appLocalizations.identityStoredPassphraseRemoved,
+                          );
+                        } catch (_) {
+                          SnackBarManager.showSnackBarOn(
+                            messenger,
+                            appLocalizations
+                                .identityStoredPassphraseRemoveFailed,
+                          );
+                        }
+                      },
+                    ),
+                ],
+              ),
             ],
           ),
         ),

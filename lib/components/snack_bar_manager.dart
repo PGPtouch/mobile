@@ -8,7 +8,13 @@ class SnackBarManager {
     BuildContext context,
     String message, [
     SnackBarAction? action,
-  ]) => ScaffoldMessenger.of(context)
+  ]) => showSnackBarOn(ScaffoldMessenger.of(context), message, action);
+
+  static void showSnackBarOn(
+    ScaffoldMessengerState messenger,
+    String message, [
+    SnackBarAction? action,
+  ]) => messenger
     ..hideCurrentSnackBar()
     ..showSnackBar(
       SnackBar(content: Text(message), behavior: .floating, action: action),

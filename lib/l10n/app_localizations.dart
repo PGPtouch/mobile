@@ -362,6 +362,30 @@ abstract class AppLocalizations {
   /// **'Continue'**
   String get passphraseInputContinue;
 
+  /// Text above the backup code fields explaining that a 24 character backup code is required to open the selected backup file
+  ///
+  /// In en, this message translates to:
+  /// **'The selected file is a Backup File, so you need the designated 24 character backup code to proceed.'**
+  String get backupCodeInputPrompt;
+
+  /// Error shown when the entered backup code cannot decrypt the backup
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong backup code.'**
+  String get backupCodeInputWrong;
+
+  /// Text above the generated backup code explaining that it is needed to use the Backup File later on and must be stored separately from it
+  ///
+  /// In en, this message translates to:
+  /// **'The following 24 character backup code is needed to use the Backup File later on. Store it securely in a separate location away from the Backup File.'**
+  String get backupCodeShowPrompt;
+
+  /// Button label to copy the generated backup code to the clipboard
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get backupCodeShowCopy;
+
   /// Message shown when the clipboard contains no text while adding a contact
   ///
   /// In en, this message translates to:
@@ -379,12 +403,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Read {count, plural, one{{count} key} other{{count} keys}} from clipboard.'**
   String addContactClipboardReadKeys(int count);
-
-  /// Confirm button label of the file picker used to import public keys
-  ///
-  /// In en, this message translates to:
-  /// **'Import'**
-  String get addContactFileImport;
 
   /// Message shown when the selected file could not be read
   ///
@@ -572,6 +590,48 @@ abstract class AppLocalizations {
   /// **'Never'**
   String get identityExpirationNever;
 
+  /// Warning shown on an identity whose key has expired
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get identityExpired;
+
+  /// Warning shown on an identity whose key has been revoked
+  ///
+  /// In en, this message translates to:
+  /// **'Revoked'**
+  String get identityRevoked;
+
+  /// Revocation reason shown when the key was revoked without giving a reason
+  ///
+  /// In en, this message translates to:
+  /// **'No reason given'**
+  String get identityRevocationReasonNoReason;
+
+  /// Revocation reason shown when the key was replaced by a newer key
+  ///
+  /// In en, this message translates to:
+  /// **'Key superseded'**
+  String get identityRevocationReasonKeySuperseded;
+
+  /// Revocation reason shown when the secret key may have been exposed
+  ///
+  /// In en, this message translates to:
+  /// **'Key compromised'**
+  String get identityRevocationReasonKeyCompromised;
+
+  /// Revocation reason shown when the key is no longer in use
+  ///
+  /// In en, this message translates to:
+  /// **'Has been retired'**
+  String get identityRevocationReasonKeyRetired;
+
+  /// Revocation reason shown when the user ID of the key is no longer valid
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid user ID'**
+  String get identityRevocationReasonUserIdInvalid;
+
   /// Title of the entry showing the strength of the key
   ///
   /// In en, this message translates to:
@@ -632,6 +692,18 @@ abstract class AppLocalizations {
   /// **'Actions'**
   String get identityActionsHeadline;
 
+  /// Title of the action that exports the key to a file
+  ///
+  /// In en, this message translates to:
+  /// **'Export key'**
+  String get identityExportKey;
+
+  /// Title of the action that exports the key as an encrypted backup file protected by a backup code
+  ///
+  /// In en, this message translates to:
+  /// **'Export as backup'**
+  String get identityExportBackup;
+
   /// Title of the action that deletes the key and its stored passphrase
   ///
   /// In en, this message translates to:
@@ -643,6 +715,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete stored passphrase'**
   String get identityDeleteStoredPassphrase;
+
+  /// Snackbar message shown after the key backup was saved successfully
+  ///
+  /// In en, this message translates to:
+  /// **'Backup exported.'**
+  String get identityBackupExported;
+
+  /// Snackbar message shown when exporting the key backup failed
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to export backup.'**
+  String get identityBackupExportFailed;
+
+  /// Snackbar message shown after the key was exported successfully
+  ///
+  /// In en, this message translates to:
+  /// **'Key exported.'**
+  String get identityKeyExported;
+
+  /// Snackbar message shown when exporting the key failed
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to export key.'**
+  String get identityKeyExportFailed;
+
+  /// Snackbar message shown after the key was deleted successfully
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted.'**
+  String get identityDeleted;
+
+  /// Snackbar message shown when deleting the key failed
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete.'**
+  String get identityDeleteFailed;
+
+  /// Snackbar message shown after the stored passphrase of the key was removed successfully
+  ///
+  /// In en, this message translates to:
+  /// **'Stored passphrase removed.'**
+  String get identityStoredPassphraseRemoved;
+
+  /// Snackbar message shown when removing the stored passphrase of the key failed
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to remove stored passphrase.'**
+  String get identityStoredPassphraseRemoveFailed;
+
+  /// Title of the action that fetches the latest version of the public key from online sources
+  ///
+  /// In en, this message translates to:
+  /// **'Update public key'**
+  String get identityUpdatePublicKey;
+
+  /// Title of the action that fetches the latest version of a contact's key from online sources
+  ///
+  /// In en, this message translates to:
+  /// **'Update key'**
+  String get identityUpdateKey;
+
+  /// Snackbar message shown after the public key was updated successfully
+  ///
+  /// In en, this message translates to:
+  /// **'Updated successfully from: {origin}'**
+  String identityPublicKeyUpdated(String origin);
+
+  /// Snackbar message shown when no online source offers an updated public key
+  ///
+  /// In en, this message translates to:
+  /// **'No source available.'**
+  String get identityPublicKeyUpdateNoSource;
+
+  /// Snackbar message shown when updating the public key failed
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to update.'**
+  String get identityPublicKeyUpdateFailed;
 
   /// Title of the setting that selects which HKP key servers are used to search for public keys
   ///

@@ -208,7 +208,7 @@ class _ScreenIdentitiesState extends State<ScreenIdentities> {
                           .join(),
                     );
                   },
-                  onIdentityDeleted: () => widget.onIdentityDeleted(key.id),
+                  onDeleted: () => widget.onIdentityDeleted(key.id),
                 );
               }).toList(),
             ),

@@ -13,8 +13,6 @@ Uint8List? _decryptPrivateKey((Uint8List, String) args) {
     final key = PrivateKey(PacketList.decode(args.$1));
     if (!key.isEncrypted) return args.$1;
     final decrypted = key.decrypt(args.$2);
-    // Re-encoding the decrypted packets would keep the passphrase protection,
-    // so the key material is written out in the clear instead.
     return Uint8List.fromList(
       PacketList([
         for (final packet in decrypted.packetList)
@@ -152,17 +150,9 @@ class _PassphraseInputState extends State<PassphraseInput> {
               ),
               child: Text(
                 "${hyphenate(appLocalizations.passphraseInputPrompt)} ${widget.identity.map((e) => appLocalizations.enquote(e)).join(", ")}",
+                textAlign: .justify,
               ),
             ),
-            // SizedBox(height: 2),
-            // SizedBox(
-            //   width: double.infinity,
-            //   child: Text(
-            //     formatFingerprint(widget.fingerprint).replaceFirst("\n", " "),
-            //     textAlign: .end,
-            //     style: textTheme.labelSmall!.googleSansCode,
-            //   ),
-            // ),
             SizedBox(height: 18),
             AnimatedSize(
               curve: ExpressiveCurves.expressiveEffects.slow,
