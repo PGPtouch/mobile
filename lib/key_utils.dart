@@ -2,10 +2,12 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dart_pg/dart_pg.dart';
+// not publicly exposed
 // ignore: implementation_imports
 import 'package:dart_pg/src/enum/revocation_reason_tag.dart';
-import 'package:mobile/l10n/app_localizations.dart';
 import 'package:shared/shared.dart';
+
+import 'l10n/app_localizations.dart';
 
 /// Human readable name of the source a key was fetched from.
 ///
@@ -59,16 +61,17 @@ DateTime? keyExpirationTime(PublicKey key) {
 /// dart_pg drops key revocation signatures (type 0x20) when parsing a key, so
 /// they have to be read from the raw packets.
 List<SignaturePacket> keyRevocations(
-  PublicKey key,
+  BaseKey key,
   Iterable<PacketList> sources,
 ) {
+  final keyPacket = key.publicKey.keyPacket;
   final seen = <String>{};
   final result = <SignaturePacket>[];
   for (final source in sources) {
     for (final packet in source.packets.whereType<SignaturePacket>()) {
       if (!packet.isKeyRevocation) continue;
       try {
-        if (!packet.verify(key.keyPacket, key.keyPacket.signBytes)) continue;
+        if (!packet.verify(keyPacket, keyPacket.signBytes)) continue;
       } catch (_) {
         continue;
       }
@@ -104,10 +107,11 @@ List<SignaturePacket> keyRevocations(
   );
 }
 
-/// Encodes [key] without losing key revocation signatures found in [sources].
-Uint8List encodePublicKey(PublicKey key, Iterable<PacketList> sources) {
-  final packets = key.packetList.packets.toList();
-  packets.insertAll(1, keyRevocations(key, sources));
+/// Encodes the public or private [key] without losing key revocation
+/// signatures found in [sources].
+Uint8List encodeKey(BaseKey key, Iterable<PacketList> sources) {
+  final packets = key.packetList.packets.toList()
+    ..insertAll(1, keyRevocations(key, sources));
   return PacketList(packets).encode();
 }
 
@@ -115,4 +119,38 @@ Uint8List encodePublicKey(PublicKey key, Iterable<PacketList> sources) {
 bool isPublicKeyDataRevoked(Uint8List data) {
   final packets = PacketList.decode(data);
   return keyRevocations(PublicKey(packets), [packets]).isNotEmpty;
+}
+
+/// Corrects the revoked/expired state of a fetched key.
+///
+/// The fetch result is computed from the dart_pg parse, which misses key
+/// revocations and expirations set on non-primary user IDs.
+UserIdKeyFetchKey correctFetchedKeyState(UserIdKeyFetchKey fetched) {
+  try {
+    final packets = PacketList.decode(fetched.bytes);
+    final key = PublicKey(packets);
+    final isRevoked =
+        fetched.isRevoked || keyRevocations(key, [packets]).isNotEmpty;
+    final expiration = keyExpirationTime(key);
+    final isExpired =
+        fetched.isExpired ||
+        (expiration != null && expiration.isBefore(DateTime.now()));
+    return (
+      bytes: fetched.bytes,
+      fingerprint: fetched.fingerprint,
+      isValid: fetched.isValid && !isRevoked && !isExpired,
+      isExpired: isExpired,
+      isRevoked: isRevoked,
+      isUnreadable: fetched.isUnreadable,
+    );
+  } catch (_) {
+    return fetched;
+  }
+}
+
+/// Concatenates the framed [keys] into a single binary stream.
+Uint8List chainKeys(List<Uint8List> keys) {
+  final builder = BytesBuilder(copy: false);
+  keys.forEach(builder.add);
+  return builder.takeBytes();
 }

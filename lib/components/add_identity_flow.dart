@@ -5,18 +5,21 @@ import 'package:dart_pg/dart_pg.dart';
 // needed for parsing armored keys
 // ignore: implementation_imports
 import 'package:dart_pg/src/common/armor.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:material_graphics/material_graphics.dart';
 import 'package:material_helper/material_helper.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:mobile/components/backup_code_input.dart';
-import 'package:mobile/components/passphrase_input.dart';
-import 'package:mobile/components/snack_bar_manager.dart';
-import 'package:mobile/key_utils.dart';
-import 'package:mobile/l10n/app_localizations.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:shared/shared.dart';
+
+import '../key_utils.dart';
+import '../l10n/app_localizations.dart';
+import '../screens/screen_create_identity.dart';
+import 'backup_code_input.dart';
+import 'bottom_sheet_multi_state.dart';
+import 'passphrase_input.dart';
+import 'research_point.dart';
+import 'snack_bar_manager.dart';
 
 String? _tryDecodeUtf8(Uint8List input) {
   try {
@@ -97,10 +100,8 @@ List<(Uint8List, Uint8List)>? _tryParseIdentityKeys(Uint8List input) {
         continue;
       }
       result.add((
-        encodePublicKey(publicKey, [
-          for (final packetList in packetLists) packetList,
-        ]),
-        privateKey.packetList.encode(),
+        encodeKey(publicKey, packetLists),
+        encodeKey(privateKey, packetLists),
       ));
     }
     return result;
@@ -147,7 +148,7 @@ class _IdentitySourceChooserState extends State<_IdentitySourceChooser> {
     }
   }
 
-  void _processSelection(String source) async {
+  Future<void> _processSelection(String source) async {
     if (_loadMode) return;
     _loadMode = true;
     if (mounted) setState(() {});
@@ -158,9 +159,29 @@ class _IdentitySourceChooserState extends State<_IdentitySourceChooser> {
     if (!mounted) return;
 
     final value = result.first as (List<(Uint8List, Uint8List)>?, String?)?;
+    ResearchPoint.trackEvent("importSource", {
+      "flow": "identity",
+      "source": source,
+      "outcome": value == null
+          ? "cancelled"
+          : value.$1 != null
+          ? "ok"
+          : value.$2 == "_sigCreate"
+          ? "create"
+          : value.$2 != null
+          ? "failed"
+          : "cancelled",
+      "keyCount": value?.$1?.length ?? 0,
+    });
     if (value == null) {
       _loadMode = false;
       if (mounted) setState(() {});
+      return;
+    }
+
+    if (value.$1 == null && value.$2 == "_sigCreate") {
+      final navigator = Navigator.of(context);
+      if (navigator.canPop()) navigator.pop(_createRequested);
       return;
     }
 
@@ -168,6 +189,8 @@ class _IdentitySourceChooserState extends State<_IdentitySourceChooser> {
     if (keys != null &&
         keys.length == 1 &&
         isPrivateKeyEncrypted(keys.single.$2)) {
+      await Future.delayed(Durations.medium1);
+
       final pair = keys.single;
       final key = await compute((_) => publicKeyFromBytes(pair.$1), null);
       if (!mounted) return;
@@ -182,13 +205,16 @@ class _IdentitySourceChooserState extends State<_IdentitySourceChooser> {
       return;
     }
 
-    Navigator.of(context).pop(
-      keys == null
-          ? null
-          : [for (final k in keys) (k.$1, k.$2, null as String?)],
-    );
-    if (value.$2 != null) {
-      SnackBarManager.showSnackBar(context, value.$2!);
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop(
+        keys == null
+            ? null
+            : [for (final k in keys) (k.$1, k.$2, null as String?)],
+      );
+      if (value.$2 != null) {
+        SnackBarManager.showSnackBar(context, value.$2!);
+      }
     }
   }
 
@@ -235,7 +261,7 @@ class _IdentitySourceChooserState extends State<_IdentitySourceChooser> {
 
     switch (source) {
       case "create":
-        break;
+        return (null, "_sigCreate");
       case "clipboard":
         final data = await Clipboard.getData(Clipboard.kTextPlain);
         if (data?.text == null) {
@@ -268,7 +294,6 @@ class _IdentitySourceChooserState extends State<_IdentitySourceChooser> {
   @override
   Widget build(BuildContext context) {
     final appLocalizations = AppLocalizations.of(context);
-    final size = MediaQuery.sizeOf(context);
 
     final modeSelection = Column(
       key: ValueKey("modeSelection"),
@@ -339,73 +364,47 @@ class _IdentitySourceChooserState extends State<_IdentitySourceChooser> {
             onCancel: () => _endBackupCode(null),
           )
         : null;
-    final modeLoading = SafeArea(
-      key: ValueKey("modeLoading"),
-      child: SizedBox(
-        height: size.height / 6,
-        child: Center(
-          child: MaterialLoadingIndicator(
-            size: MaterialLoadingIndicatorSizes.large,
-          ),
-        ),
-      ),
-    );
 
-    return SizedBox(
-      width: double.infinity,
-      child: AnimatedSize(
-        curve: ExpressiveCurves.expressiveEffects.slow,
-        duration: ExpressiveCurves.expressiveEffects.slowDuration,
-        alignment: Alignment.topCenter,
-        clipBehavior: Clip.antiAlias,
-        child: AnimatedSwitcher(
-          switchInCurve: ExpressiveCurves.expressiveEffects.slow,
-          switchOutCurve: ExpressiveCurves.expressiveEffects.slow.flipped,
-          duration: ExpressiveCurves.expressiveEffects.slowDuration,
-          transitionBuilder: (child, animation) {
-            var widget = child;
-            if (!animation.isForwardOrCompleted) {
-              widget = SlideTransition(
-                position: Tween(
-                  begin: Offset(0.0, 0.06),
-                  end: Offset.zero,
-                ).animate(animation),
-                child: Material(color: Colors.transparent, child: widget),
-              );
-            }
-            return FadeTransition(opacity: animation, child: widget);
-          },
-          layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
-            return Stack(
-              alignment: Alignment.topCenter,
-              clipBehavior: Clip.none,
-              children: <Widget>[
-                ...previousChildren.map(
-                  (child) =>
-                      Positioned(left: 0, right: 0, top: 0, child: child),
-                ),
-                ?currentChild,
-              ],
-            );
-          },
-          child: _backupCompleter != null
-              ? modeBackup!
-              : _loadMode
-              ? modeLoading
-              : _isPassphraseMode
-              ? modePassphrase!
-              : modeSelection,
-        ),
-      ),
+    return BottomSheetMultiState(
+      child: _backupCompleter != null
+          ? modeBackup!
+          : _loadMode
+          ? null
+          : _isPassphraseMode
+          ? modePassphrase!
+          : modeSelection,
     );
   }
 }
 
-Future<List<(Uint8List, Uint8List, String?)>?> startAddIdentityFlow(
-  BuildContext context,
-) async => await showModalBottomSheet<List<(Uint8List, Uint8List, String?)>>(
-  context: context,
-  isScrollControlled: true,
-  clipBehavior: Clip.antiAlias,
-  builder: (_) => _IdentitySourceChooser(),
-);
+/// Popped by the source chooser to ask [startAddIdentityFlow] to open the
+/// create identity screen instead.
+final _createRequested = Object();
+
+/// Result of [startAddIdentityFlow]. [created] is non-null only if the user
+/// chose to create a new identity, in which case it tells whether one was
+/// actually created and [keys] is null.
+typedef AddIdentityFlowResult = ({
+  List<(Uint8List, Uint8List, String?)>? keys,
+  bool? created,
+});
+
+Future<AddIdentityFlowResult> startAddIdentityFlow(BuildContext context) async {
+  final result = await showModalBottomSheet<Object>(
+    context: context,
+    isScrollControlled: true,
+    clipBehavior: Clip.antiAlias,
+    builder: (_) => _IdentitySourceChooser(),
+  );
+  if (identical(result, _createRequested)) {
+    if (!context.mounted) return (keys: null, created: false);
+    final created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const ScreenCreateIdentity()),
+    );
+    return (keys: null, created: created == true);
+  }
+  return (
+    keys: result as List<(Uint8List, Uint8List, String?)>?,
+    created: null,
+  );
+}

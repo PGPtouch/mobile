@@ -2,22 +2,28 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dart_pg/dart_pg.dart';
+// not publicly exposed
+// ignore: implementation_imports
+import 'package:dart_pg/src/common/armor.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:material_graphics/material_graphics.dart';
 import 'package:material_helper/material_helper.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:mobile/components/backup_code_input.dart';
-import 'package:mobile/components/snack_bar_manager.dart';
-import 'package:mobile/key_utils.dart';
-import 'package:mobile/l10n/app_localizations.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:mobile/main.dart';
-import 'package:mobile/screens/screen_run.dart';
-import 'package:mobile/states.dart';
 import 'package:shared/shared.dart';
 import 'package:shared/user_id.dart' as user_id;
-import 'package:http/http.dart' as http;
+
+import '../key_utils.dart';
+import '../l10n/app_localizations.dart';
+import '../main.dart';
+import '../screens/screen_run.dart';
+import '../states.dart';
+import 'backup_code_input.dart';
+import 'bottom_sheet_multi_state.dart';
+import 'research_point.dart';
+import 'snack_bar_manager.dart';
 
 String? _tryDecodeUtf8(Uint8List input) {
   try {
@@ -34,56 +40,56 @@ final _armoredKeyBlock = RegExp(
 List<Uint8List>? _tryParseArbitraryInput(Uint8List input) {
   try {
     final text = _tryDecodeUtf8(input);
-    final List<Uint8List> keys;
+    final packetLists = <PacketList>[];
     if (text != null && text.contains("-----BEGIN PGP")) {
       final normalized = text
           .replaceAll("\r\n", "\n")
           .replaceAll("\r", "\n")
           .trim();
-      keys = [
-        for (final match in _armoredKeyBlock.allMatches(normalized))
-          if (match.group(1) == "PUBLIC")
-            ...OpenPGP.readPublicKeys(match.group(0)!)
-                .map((key) => key.publicKey.packetList.encode())
-          else
-            PrivateKey.fromArmored(match.group(0)!).publicKey.packetList
-                .encode(),
-      ];
+      for (final match in _armoredKeyBlock.allMatches(normalized)) {
+        packetLists.add(PacketList.decode(Armor.decode(match.group(0)!).data));
+      }
     } else {
-      final packetList = PacketList.decode(input);
+      packetLists.add(PacketList.decode(input));
+    }
+
+    // dart_pg drops key revocation signatures while parsing, so the public
+    // keys are re-encoded with the revocations from the raw packets.
+    final keys = <Uint8List>[];
+    for (final packetList in packetLists) {
       final starts = packetList.indexOfTypes([
         PacketType.publicKey,
         PacketType.secretKey,
       ]);
-      keys = [
-        for (var i = 0; i < starts.length; i++)
-          () {
-            final packets = PacketList(
-              packetList.packets.sublist(
-                starts[i],
-                i + 1 < starts.length ? starts[i + 1] : packetList.length,
-              ),
-            );
-            return packetList.packets[starts[i]].type == PacketType.publicKey
-                ? PublicKey(packets).packetList.encode()
-                : PrivateKey(packets).publicKey.packetList.encode();
-          }(),
-      ];
+      for (var i = 0; i < starts.length; i++) {
+        final packets = PacketList(
+          packetList.packets.sublist(
+            starts[i],
+            i + 1 < starts.length ? starts[i + 1] : packetList.length,
+          ),
+        );
+        final publicKey =
+            packetList.packets[starts[i]].type == PacketType.publicKey
+            ? PublicKey(packets)
+            : PrivateKey(packets).publicKey as PublicKey;
+        keys.add(encodeKey(publicKey, [packets]));
+      }
     }
     // Backups may hold both the secret and the public copy of a key.
     final seenFingerprints = <String>{};
-    keys.removeWhere(
-      (k) => !seenFingerprints.add(
-        publicKeyFromBytes(k).fingerprint
-            .map((b) => b.toRadixString(16).padLeft(2, "0"))
-            .join(),
-      ),
-    );
-    keys.removeWhere(
-      (k) =>
-          publicKeyFromBytes(k).users
-              .any((u) => UserId.tryParse(u.userID) == null),
-    );
+    keys
+      ..removeWhere(
+        (k) => !seenFingerprints.add(
+          publicKeyFromBytes(k).fingerprint
+              .map((b) => b.toRadixString(16).padLeft(2, "0"))
+              .join(),
+        ),
+      )
+      ..removeWhere(
+        (k) =>
+            publicKeyFromBytes(k).users
+                .any((u) => UserId.tryParse(u.userID) == null),
+      );
     return keys.isEmpty ? null : keys;
   } catch (_) {
     return null;
@@ -162,7 +168,7 @@ class _ContactSourceChooserState extends State<_ContactSourceChooser> {
     if (mounted) setState(() {});
   }
 
-  void _processSelection(String source) async {
+  Future<void> _processSelection(String source) async {
     if (_loadMode) return;
     _loadMode = true;
     if (mounted) setState(() {});
@@ -172,15 +178,31 @@ class _ContactSourceChooserState extends State<_ContactSourceChooser> {
     ]);
     if (!mounted) return;
 
+    ResearchPoint.trackEvent("importSource", {
+      "flow": "contact",
+      "source": source,
+      "outcome": result.first == null
+          ? "opened"
+          : result.first.$1 != null
+          ? "ok"
+          : result.first.$2 != null
+          ? "failed"
+          : "cancelled",
+      "keyCount": result.first?.$1?.length ?? 0,
+    });
+
     if (result.first == null) {
       _loadMode = false;
       if (mounted) setState(() {});
       return;
     }
 
-    Navigator.of(context).pop(result.first.$1);
-    if (result.first.$2 != null) {
-      SnackBarManager.showSnackBar(context, result.first.$2);
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop(result.first.$1);
+      if (result.first.$2 != null) {
+        SnackBarManager.showSnackBar(context, result.first.$2);
+      }
     }
   }
 
@@ -265,6 +287,8 @@ class _ContactSourceChooserState extends State<_ContactSourceChooser> {
       return;
     }
 
+    final searchStopwatch = Stopwatch()..start();
+    var searchOutcome = "results";
     try {
       final hkpKeyServers =
           prefs
@@ -278,13 +302,22 @@ class _ContactSourceChooserState extends State<_ContactSourceChooser> {
               .toList() ??
           UserId.defaultHkpKeyServers;
       _searchResults = await compute(
-        (_) => UserId(email: query).fetchKeyFromPublicFull(
-          KeyFetchHttpClient(),
-          hkpKeyServers: hkpKeyServers,
-        ),
+        (_) async => [
+          for (final result
+              in await UserId(email: query).fetchKeyFromPublicFull(
+                KeyFetchHttpClient(),
+                hkpKeyServers: hkpKeyServers,
+              ))
+            (
+              keys: result.keys.map(correctFetchedKeyState).toList(),
+              origin: result.origin,
+              originHost: result.originHost,
+            ),
+        ],
         null,
       );
       if (_searchResults.isEmpty) {
+        searchOutcome = "none";
         _searchControllerError = appLocalizations.addContactSearchNoKeys;
       } else {
         final parsedKeys = <Uint8List, PublicKey?>{};
@@ -310,8 +343,18 @@ class _ContactSourceChooserState extends State<_ContactSourceChooser> {
       }
     } catch (e) {
       log("AddContactFlow", "(error) $e");
+      searchOutcome = "failed";
       _searchControllerError = appLocalizations.addContactSearchFailed;
     }
+    ResearchPoint.trackEvent("contactSearch", {
+      "outcome": searchOutcome,
+      "resultCount": _searchResults.length,
+      "validKeyCount": _parsedResultKeys.values.nonNulls.length,
+      "durationMs": searchStopwatch.elapsedMilliseconds,
+      "serverCount":
+          prefs?.getStringList("hkp_key_servers")?.length ??
+          UserId.defaultHkpKeyServers.length,
+    });
     _isSearching = false;
     if (mounted) setState(() {});
   }
@@ -582,64 +625,15 @@ class _ContactSourceChooserState extends State<_ContactSourceChooser> {
             onCancel: () => _endBackupCode(null),
           )
         : null;
-    final modeLoading = SafeArea(
-      key: ValueKey("modeLoading"),
-      child: SizedBox(
-        height: size.height / 6,
-        child: Center(
-          child: MaterialLoadingIndicator(
-            size: MaterialLoadingIndicatorSizes.large,
-          ),
-        ),
-      ),
-    );
 
-    return SizedBox(
-      width: double.infinity,
-      child: AnimatedSize(
-        curve: ExpressiveCurves.expressiveEffects.slow,
-        duration: ExpressiveCurves.expressiveEffects.slowDuration,
-        alignment: Alignment.topCenter,
-        clipBehavior: Clip.antiAlias,
-        child: AnimatedSwitcher(
-          switchInCurve: ExpressiveCurves.expressiveEffects.slow,
-          switchOutCurve: ExpressiveCurves.expressiveEffects.slow.flipped,
-          duration: ExpressiveCurves.expressiveEffects.slowDuration,
-          transitionBuilder: (child, animation) {
-            var widget = child;
-            if (!animation.isForwardOrCompleted) {
-              widget = SlideTransition(
-                position: Tween(
-                  begin: Offset(0.0, 0.06),
-                  end: Offset.zero,
-                ).animate(animation),
-                child: Material(color: Colors.transparent, child: widget),
-              );
-            }
-            return FadeTransition(opacity: animation, child: widget);
-          },
-          layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
-            return Stack(
-              alignment: Alignment.topCenter,
-              clipBehavior: Clip.none,
-              children: <Widget>[
-                ...previousChildren.map(
-                  (child) =>
-                      Positioned(left: 0, right: 0, top: 0, child: child),
-                ),
-                ?currentChild,
-              ],
-            );
-          },
-          child: _backupCompleter != null
-              ? modeBackup!
-              : _loadMode
-              ? modeLoading
-              : _searchMode
-              ? modeSearching
-              : modeSelection,
-        ),
-      ),
+    return BottomSheetMultiState(
+      child: _backupCompleter != null
+          ? modeBackup!
+          : _loadMode
+          ? null
+          : _searchMode
+          ? modeSearching
+          : modeSelection,
     );
   }
 }

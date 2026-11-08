@@ -23,7 +23,7 @@ extension ContactExtension on Contact {
     List<String> userIds,
   ) {
     if (userIds.isEmpty) return const [];
-    final parsed = userIds.map((u) => UserId.parse(u));
+    final parsed = userIds.map(UserId.parse);
     return parsed
         .map(
           (u) => ContactUserIdsCompanion.insert(

@@ -1,16 +1,14 @@
-// ignore_for_file: unused_import
-
 import 'dart:async';
 
 import 'package:bluetooth_low_energy/bluetooth_low_energy.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:mobile/main.dart';
-import 'package:mobile/states.dart';
+import 'package:nfc_util/android.dart' as nfc_android;
 import 'package:nfc_util/nfc_util.dart';
 import 'package:open_settings_plus/open_settings_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:nfc_util/android.dart' as nfc_android;
+
+import '../states.dart';
 
 class ProtocolPermissionState {
   final List<Permission>? requiredPermissions;
@@ -183,7 +181,7 @@ class _ProtocolPermissionBuilderState extends State<ProtocolPermissionBuilder>
 
   Future<void> _openNfcSettings() async {
     switch (OpenSettingsPlus.shared) {
-      case OpenSettingsPlusAndroid settings:
+      case final OpenSettingsPlusAndroid settings:
         final ok = await settings.sendAndroidIntent(
           "android.settings.panel.action.NFC",
         );
@@ -195,7 +193,7 @@ class _ProtocolPermissionBuilderState extends State<ProtocolPermissionBuilder>
 
   Future<void> _openBluetoothSettings() async {
     switch (OpenSettingsPlus.shared) {
-      case OpenSettingsPlusAndroid settings:
+      case final OpenSettingsPlusAndroid settings:
         final ok = await settings.sendAndroidIntent(
           "android.bluetooth.adapter.action.REQUEST_ENABLE",
         );

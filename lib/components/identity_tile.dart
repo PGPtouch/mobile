@@ -2,6 +2,13 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:dart_pg/dart_pg.dart';
+// not publicly exposed
+// ignore: implementation_imports
+import 'package:dart_pg/src/common/armor.dart';
+// not publicly exposed
+// ignore: implementation_imports
+import 'package:dart_pg/src/enum/armor_type.dart';
+// not publicly exposed
 // ignore: implementation_imports
 import 'package:dart_pg/src/enum/revocation_reason_tag.dart';
 import 'package:file_picker/file_picker.dart';
@@ -10,21 +17,24 @@ import 'package:flutter/services.dart';
 import 'package:icon_craft/icon_craft.dart';
 import 'package:intl/intl.dart';
 import 'package:material_graphics/material_graphics.dart';
-import 'package:material_ui/material_ui.dart';
-
 import 'package:material_helper/material_helper.dart';
-import 'package:mobile/components/add_contact_flow.dart';
-import 'package:mobile/components/backup_code_input.dart';
-import 'package:mobile/components/snack_bar_manager.dart';
-import 'package:mobile/key_utils.dart';
-import 'package:mobile/l10n/app_localizations.dart';
-import 'package:mobile/main.dart';
-import 'package:mobile/screens/screen_run.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:shared/shared.dart';
 
-import '../screens/screen_contacts.dart';
-import '../database/key_store.dart' as key_store;
 import '../database/contact_store.dart' as contact_store;
+import '../database/key_store.dart' as key_store;
+import '../key_utils.dart';
+import '../l10n/app_localizations.dart';
+import '../main.dart';
+import '../screens/screen_contacts.dart';
+import '../screens/screen_run.dart';
+import 'add_contact_flow.dart';
+import 'backup_code_input.dart';
+import 'bottom_sheet_multi_state.dart';
+import 'research_point.dart';
+import 'snack_bar_manager.dart';
+
+typedef KeyRevocationReason = ({RevocationReasonTag? tag, String description});
 
 final class IdentityContactInterchangeableHandler<T extends Object> {
   final T data;
@@ -70,11 +80,9 @@ final class IdentityContactInterchangeableHandler<T extends Object> {
     return null;
   }
 
-  ({RevocationReasonTag? tag, String description})? revocationReason() {
-    if (data is key_store.Key) {
-      return publicKeyRevocationReason((data as key_store.Key).publicData);
-    } else if (data is contact_store.Contact) {
-      return publicKeyRevocationReason((data as contact_store.Contact).data);
+  Future<KeyRevocationReason?> revocationReason() async {
+    if (data is key_store.Key || data is contact_store.Contact) {
+      return await compute(publicKeyRevocationReason, publicData);
     }
     return null;
   }
@@ -132,64 +140,48 @@ final class IdentityContactInterchangeableHandler<T extends Object> {
     final messenger = ScaffoldMessenger.of(context);
     final appLocalizations = AppLocalizations.of(context);
     final exportAsBackup = data is key_store.Key && asBackup;
-    final exportData = await compute(
-      (_) => switch (data.runtimeType) {
-        key_store.Key => PrivateKey(
-          PacketList.decode((data as key_store.Key).privateData),
-        ),
-        contact_store.Contact => PublicKey(
-          PacketList.decode((data as contact_store.Contact).data),
-        ),
-        _ => throw Exception("Invalid data type"),
-      },
-      null,
-    );
-
-    Future<({String backupCode, String data})> backupFormat() async {
-      assert(
-        exportAsBackup,
-        "Backup format can only be used for key_store.Key with asBackup=true",
-      );
-
-      final rng = math.Random.secure();
-      final rngCharList = backupCodeCharacters;
-      var backupCode = StringBuffer();
-      for (var i = 0; i < 24; i++) {
-        if (i % 4 == 0 && i != 0) backupCode.write("-");
-        backupCode.write(rngCharList[rng.nextInt(rngCharList.length)]);
-      }
-
-      final backup = (await compute(
-        (data) => OpenPGP.encryptCleartext(
-          data,
-          passwords: [backupCode.toString()],
-        ).armor(),
-        exportData.armor(),
-      )).replaceFirst("\n\n", "\nBackupVersion: 2\n\n");
-
-      return (backupCode: backupCode.toString(), data: backup);
-    }
+    final exportBytes = switch (data) {
+      final key_store.Key key => key.privateData,
+      final contact_store.Contact contact => contact.data,
+      _ => throw Exception("Invalid data type"),
+    };
+    final publicBytes = switch (data) {
+      final key_store.Key key => key.publicData,
+      final contact_store.Contact contact => contact.data,
+      _ => throw Exception("Invalid data type"),
+    };
 
     final userIdsToFileName =
         userIds?.map((u) => u.name?.trim().replaceAll(" ", "_")).join("-") ??
         "Unknown";
 
     if (exportAsBackup) {
-      final backup = await backupFormat();
       if (!context.mounted) return;
-      final confirmed = await showModalBottomSheet<bool>(
+      final backupCode = ValueNotifier<String?>(null);
+      final confirmedFuture = showModalBottomSheet<bool>(
         context: context,
         isScrollControlled: true,
         clipBehavior: Clip.antiAlias,
-        builder: (context) => BackupCodeOutput(backupCode: backup.backupCode),
+        builder: (context) => BackupCodeOutput(backupCode: backupCode),
       );
-      if (confirmed != true) return;
+      final backup = await backupFormat([
+        (type: ArmorType.publicKey, bytes: publicBytes),
+        (type: ArmorType.privateKey, bytes: exportBytes),
+      ]);
+      backupCode.value = backup.backupCode;
+
+      final confirmed = await confirmedFuture;
+      if (confirmed != true) {
+        _trackExport("backup", "cancelled");
+        return;
+      }
       if (context.mounted) Navigator.of(context).pop();
       try {
         final path = await FilePicker.saveFile(
           fileName: "$userIdsToFileName.asc",
           bytes: utf8.encode(backup.data),
         );
+        _trackExport("backup", path != null ? "saved" : "cancelled");
         if (path != null) {
           SnackBarManager.showSnackBarOn(
             messenger,
@@ -197,6 +189,7 @@ final class IdentityContactInterchangeableHandler<T extends Object> {
           );
         }
       } catch (_) {
+        _trackExport("backup", "failed");
         SnackBarManager.showSnackBarOn(
           messenger,
           appLocalizations.identityBackupExportFailed,
@@ -207,8 +200,9 @@ final class IdentityContactInterchangeableHandler<T extends Object> {
       try {
         final path = await FilePicker.saveFile(
           fileName: "$userIdsToFileName.pgp",
-          bytes: exportData.packetList.encode(),
+          bytes: exportBytes,
         );
+        _trackExport("plain", path != null ? "saved" : "cancelled");
         if (path != null) {
           SnackBarManager.showSnackBarOn(
             messenger,
@@ -216,6 +210,7 @@ final class IdentityContactInterchangeableHandler<T extends Object> {
           );
         }
       } catch (_) {
+        _trackExport("plain", "failed");
         SnackBarManager.showSnackBarOn(
           messenger,
           appLocalizations.identityKeyExportFailed,
@@ -223,6 +218,13 @@ final class IdentityContactInterchangeableHandler<T extends Object> {
       }
     }
   }
+
+  void _trackExport(String format, String outcome) =>
+      ResearchPoint.trackEvent("keyExport", {
+        "target": data is key_store.Key ? "identity" : "contact",
+        "format": format,
+        "outcome": outcome,
+      });
 
   Future<String> updatePublicKey(
     BuildContext context, {
@@ -232,27 +234,13 @@ final class IdentityContactInterchangeableHandler<T extends Object> {
       throw Exception("Invalid key data");
     }
 
-    final size = MediaQuery.sizeOf(context);
     final appLocalizations = AppLocalizations.of(context);
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       clipBehavior: Clip.antiAlias,
-      builder: (_) => SizedBox(
-        width: double.infinity,
-        child: SafeArea(
-          key: ValueKey("modeLoading"),
-          child: SizedBox(
-            height: size.height / 6,
-            child: Center(
-              child: MaterialLoadingIndicator(
-                size: MaterialLoadingIndicatorSizes.large,
-              ),
-            ),
-          ),
-        ),
-      ),
+      builder: (_) => BottomSheetMultiState(child: null),
     );
 
     final hkpKeyServers =
@@ -275,15 +263,17 @@ final class IdentityContactInterchangeableHandler<T extends Object> {
       (email: email, fingerprint: fingerprint),
     );
     if (update == null) {
+      _trackUpdate("noSource");
       throw Exception("No source available");
     }
 
     if (!publicKeysMatch(update.keys.first.bytes, publicData)) {
+      _trackUpdate("mismatch");
       throw Exception("Public key mismatch");
     }
 
     final newParsedKey = await compute(
-      (bytes) => publicKeyFromBytes(bytes),
+      publicKeyFromBytes,
       update.keys.first.bytes,
     );
     final users = newParsedKey.users
@@ -319,12 +309,18 @@ final class IdentityContactInterchangeableHandler<T extends Object> {
       );
     }
 
+    _trackUpdate("updated");
     return keyFetchSourceTitle(
       appLocalizations,
       origin: update.origin,
       originHost: update.originHost,
     ).title;
   }
+
+  void _trackUpdate(String outcome) => ResearchPoint.trackEvent("keyUpdate", {
+    "target": data is key_store.Key ? "identity" : "contact",
+    "outcome": outcome,
+  });
 
   Future<void> delete() async {
     if (data is key_store.Key) {
@@ -350,6 +346,9 @@ final class IdentityContactInterchangeableHandler<T extends Object> {
     } else {
       throw Exception("Invalid data type");
     }
+    ResearchPoint.trackEvent("keyDeleted", {
+      "target": data is key_store.Key ? "identity" : "contact",
+    });
   }
 
   Future<void> deleteKeyPassphrase() async {
@@ -361,8 +360,46 @@ final class IdentityContactInterchangeableHandler<T extends Object> {
   }
 }
 
+Future<({String backupCode, String data})> backupFormat(
+  List<({ArmorType type, Uint8List bytes})> exportBytes,
+) async {
+  final rng = math.Random.secure();
+  final backupCode = StringBuffer();
+  for (var i = 0; i < 24; i++) {
+    if (i % 4 == 0 && i != 0) backupCode.write("-");
+    backupCode.write(
+      backupCodeCharacters[rng.nextInt(backupCodeCharacters.length)],
+    );
+  }
+
+  String brandingReplacement(String input) => input.replaceFirst(
+    RegExp(r"^Comment:.*$", multiLine: true),
+    "Comment: Exported from PGPtouch",
+  );
+  String exportedBytesFormat(
+    List<({ArmorType type, Uint8List bytes})> exportBytes,
+  ) {
+    final parts = exportBytes.map(
+      (b) => brandingReplacement(Armor.encode(b.type, b.bytes)).trim(),
+    );
+    return "${parts.join("\n")}\n";
+  }
+
+  final backup = brandingReplacement(
+    await compute(
+      (data) => OpenPGP.encryptCleartext(
+        data,
+        passwords: [backupCode.toString()],
+      ).armor(),
+      exportedBytesFormat(exportBytes),
+    ),
+  ).replaceFirst("\n\n", "\nBackupVersion: 2\n\n");
+
+  return (backupCode: backupCode.toString(), data: backup);
+}
+
 class BackupCodeOutput extends StatefulWidget {
-  final String backupCode;
+  final ValueNotifier<String?> backupCode;
   const new({super.key, required this.backupCode});
 
   @override
@@ -373,19 +410,37 @@ class _BackupCodeOutputState extends State<BackupCodeOutput> {
   var copied = false;
 
   @override
+  void initState() {
+    super.initState();
+    widget.backupCode.addListener(onUpdate);
+  }
+
+  @override
+  void dispose() {
+    widget.backupCode.removeListener(onUpdate);
+    super.dispose();
+  }
+
+  void onUpdate() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     final appLocalizations = AppLocalizations.of(context);
     final textTheme = TextTheme.of(context);
 
-    final backupCodeParts = widget.backupCode.split("-");
+    final backupCodeParts = widget.backupCode.value?.split("-");
     final backupCodeFormatted = StringBuffer();
-    for (var i = 0; i < backupCodeParts.length; i++) {
-      backupCodeFormatted
-        ..write(backupCodeParts[i])
-        ..write(i.isEven ? " - " : " -\n");
+    if (backupCodeParts != null) {
+      for (var i = 0; i < backupCodeParts.length; i++) {
+        backupCodeFormatted
+          ..write(backupCodeParts[i])
+          ..write(i.isEven ? " - " : " -\n");
+      }
     }
 
-    return Padding(
+    Widget content() => Padding(
       padding:
           MediaQuery.viewInsetsOf(context) +
           MediaQuery.paddingOf(context) +
@@ -410,7 +465,7 @@ class _BackupCodeOutputState extends State<BackupCodeOutput> {
               Expanded(child: SizedBox()),
               FilledButton.icon(
                 onPressed: () {
-                  copyData(context, widget.backupCode);
+                  copyDataInt(context, widget.backupCode.value, false);
                   copied = true;
                   if (mounted) setState(() {});
                 },
@@ -429,6 +484,10 @@ class _BackupCodeOutputState extends State<BackupCodeOutput> {
         ],
       ),
     );
+
+    return BottomSheetMultiState(
+      child: widget.backupCode.value != null ? content() : null,
+    );
   }
 }
 
@@ -436,8 +495,10 @@ final class UserIdInterchangeableHandler<T extends Object> {
   final T data;
   const new(this.data)
     : assert(
-        data is key_store.KeyUserId || data is contact_store.ContactUserId,
-        "Data must be either a Key or a Contact",
+        data is key_store.KeyUserId ||
+            data is contact_store.ContactUserId ||
+            data is UserId,
+        "Data must be either a Key, a Contact or a UserId",
       );
 
   int get id {
@@ -454,6 +515,8 @@ final class UserIdInterchangeableHandler<T extends Object> {
       return (data as key_store.KeyUserId).name;
     } else if (data is contact_store.ContactUserId) {
       return (data as contact_store.ContactUserId).name;
+    } else if (data is UserId) {
+      return (data as UserId).name;
     }
     throw Exception("Invalid data type");
   }
@@ -463,6 +526,8 @@ final class UserIdInterchangeableHandler<T extends Object> {
       return (data as key_store.KeyUserId).comment;
     } else if (data is contact_store.ContactUserId) {
       return (data as contact_store.ContactUserId).comment;
+    } else if (data is UserId) {
+      return (data as UserId).comment;
     }
     throw Exception("Invalid data type");
   }
@@ -472,6 +537,8 @@ final class UserIdInterchangeableHandler<T extends Object> {
       return (data as key_store.KeyUserId).email;
     } else if (data is contact_store.ContactUserId) {
       return (data as contact_store.ContactUserId).email;
+    } else if (data is UserId) {
+      return (data as UserId).email;
     }
     throw Exception("Invalid data type");
   }
@@ -486,10 +553,7 @@ extension KeyUserIdToUserIdInterchangeableHandlerExtension
 extension KeyUserIdListToUserIdInterchangeableHandlerExtension
     on List<key_store.KeyUserId> {
   List<UserIdInterchangeableHandler<key_store.KeyUserId>> toInterchangeable() =>
-      map(
-        (keyUserId) =>
-            UserIdInterchangeableHandler<key_store.KeyUserId>(keyUserId),
-      ).toList();
+      map(UserIdInterchangeableHandler<key_store.KeyUserId>.new).toList();
 }
 
 extension ContactUserIdToUserIdInterchangeableHandlerExtension
@@ -502,18 +566,16 @@ extension ContactUserIdToUserIdInterchangeableHandlerExtension
 extension ContactUserIdListToUserIdInterchangeableHandlerExtension
     on List<contact_store.ContactUserId> {
   List<UserIdInterchangeableHandler<contact_store.ContactUserId>>
-  toInterchangeable() => map(
-    (contactUserId) =>
-        UserIdInterchangeableHandler<contact_store.ContactUserId>(
-          contactUserId,
-        ),
-  ).toList();
+  toInterchangeable() =>
+      map(UserIdInterchangeableHandler<contact_store.ContactUserId>.new)
+          .toList();
 }
 
 class IdentityTile<K extends Object, U extends Object> extends StatefulWidget {
   final IdentityContactInterchangeableHandler<K> keyData;
   final List<UserIdInterchangeableHandler<U>> userIds;
   final VoidCallback? onTap;
+  final VoidCallback? onUpdate;
   final VoidCallback? onDeleted;
 
   const new({
@@ -521,6 +583,7 @@ class IdentityTile<K extends Object, U extends Object> extends StatefulWidget {
     required this.keyData,
     required this.userIds,
     this.onTap,
+    this.onUpdate,
     this.onDeleted,
   });
 
@@ -529,9 +592,9 @@ class IdentityTile<K extends Object, U extends Object> extends StatefulWidget {
 }
 
 class _IdentityTileState extends State<IdentityTile> {
-  PublicKey? _parsedKey;
   bool? _passphraseIsStored;
-  ({RevocationReasonTag? tag, String description})? _revocationReason;
+  final _parsedKey = ValueNotifier<PublicKey?>(null);
+  final _revocationReason = ValueNotifier<KeyRevocationReason?>(null);
 
   @override
   void initState() {
@@ -546,15 +609,17 @@ class _IdentityTileState extends State<IdentityTile> {
     super.dispose();
   }
 
-  void onUpdate() async {
+  Future<void> onUpdate() async {
     _passphraseIsStored = await widget.keyData.hasKeyPassphrase();
     if (mounted) setState(() {});
   }
 
-  void _parseKey(Uint8List keyData) async {
-    _parsedKey = await compute((_) => publicKeyFromBytes(keyData), null);
+  Future<void> _parseKey(Uint8List keyData) async {
     _passphraseIsStored = await widget.keyData.hasKeyPassphrase();
-    _revocationReason = widget.keyData.revocationReason();
+    if (mounted) setState(() {});
+
+    _parsedKey.value = await compute(publicKeyFromBytes, keyData);
+    _revocationReason.value = await widget.keyData.revocationReason();
     if (mounted) setState(() {});
   }
 
@@ -601,6 +666,7 @@ class _IdentityTileState extends State<IdentityTile> {
         isExpired: isExpired,
         isRevoked: isRevoked,
         revocationReason: _revocationReason,
+        onUpdate: widget.onUpdate,
         onDeleted: widget.onDeleted,
       ),
     );
@@ -608,40 +674,43 @@ class _IdentityTileState extends State<IdentityTile> {
     return MaterialListTile(
       title: Padding(
         padding: const EdgeInsets.only(bottom: 8),
-        child: Wrap(
-          spacing: 2,
-          runSpacing: 2,
-          crossAxisAlignment: .center,
-          children: [
-            ...users,
-            if (isExpired || isRevoked)
-              Padding(
-                padding: const EdgeInsetsDirectional.only(start: 14),
-                child: Text.rich(
-                  TextSpan(
-                    children: [
-                      WidgetSpan(
-                        child: Icon(
-                          Icons.warning_amber_outlined,
-                          size: textTheme.bodySmall?.fontSize,
-                          color: fgColor,
+        child: DefaultTextStyle.merge(
+          style: TextStyle(color: fgColor),
+          child: Wrap(
+            spacing: 2,
+            runSpacing: 2,
+            crossAxisAlignment: .center,
+            children: [
+              ...users,
+              if (isExpired || isRevoked)
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(start: 14),
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        WidgetSpan(
+                          child: Icon(
+                            Icons.warning_amber_outlined,
+                            size: textTheme.bodySmall?.fontSize,
+                            color: fgColor,
+                          ),
+                          alignment: .middle,
                         ),
-                        alignment: .middle,
-                      ),
-                      TextSpan(text: " "),
-                      TextSpan(
-                        text: isExpired
-                            ? appLocalizations.identityExpired
-                            : appLocalizations.identityRevoked,
-                      ),
-                    ],
+                        TextSpan(text: " "),
+                        TextSpan(
+                          text: isExpired
+                              ? appLocalizations.identityExpired
+                              : appLocalizations.identityRevoked,
+                        ),
+                      ],
+                    ),
+                    style: textTheme.bodySmall!.copyWith(color: fgColor),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  style: textTheme.bodySmall!.copyWith(color: fgColor),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
       subtitle: Builder(
@@ -663,7 +732,6 @@ class _IdentityTileState extends State<IdentityTile> {
                   TextSpan(text: " "),
                   TextSpan(
                     text: DateFormat.yMMMd(appLocalizations.localeName)
-                        .add_Hm()
                         .format(widget.keyData.createdAt),
                   ),
                   TextSpan(text: " " * 4),
@@ -679,7 +747,6 @@ class _IdentityTileState extends State<IdentityTile> {
                   TextSpan(
                     text: widget.keyData.expiresAt != null
                         ? DateFormat.yMMMd(appLocalizations.localeName)
-                              .add_Hm()
                               .format(widget.keyData.expiresAt!)
                         : appLocalizations.identityExpirationNever,
                   ),
@@ -715,18 +782,19 @@ class _IdentityTileState extends State<IdentityTile> {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            FittedBox(
-              fit: BoxFit.fitWidth,
-              child: Text(
-                formatFingerprint(widget.keyData.fingerprint)
+            Text(
+              () {
+                final text = formatFingerprint(widget.keyData.fingerprint)
                     .replaceAll(" ", "")
-                    .replaceFirst("\n", ""),
-                style: textTheme.bodySmall!.googleSansCode.copyWith(
-                  color: fgColor,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                    .replaceFirst("\n", "")
+                    .split("");
+                return "${text.sublist(0, (text.length / 2).ceil()).join()}\u{200B}${text.sublist((text.length / 2).ceil()).join()}";
+              }(),
+              style: textTheme.bodySmall!.googleSansCode.copyWith(
+                color: fgColor,
               ),
+              maxLines: 2,
+              overflow: TextOverflow.fade,
             ),
           ],
         ),
@@ -737,20 +805,21 @@ class _IdentityTileState extends State<IdentityTile> {
           : null,
       isThreeLine: true,
       onTap: !(isExpired || isRevoked) ? widget.onTap : null,
-      onLongPress: _parsedKey != null ? () => showDetailScreen() : null,
+      onLongPress: showDetailScreen,
     );
   }
 }
 
-class IdentityDetailScreen<K extends Object> extends StatelessWidget {
+class IdentityDetailScreen<K extends Object> extends StatefulWidget {
   final List<IdentityTileUserIdChip> users;
   final List<UserIdInterchangeableHandler> userIds;
-  final PublicKey? parsedKey;
+  final ValueNotifier<PublicKey?> parsedKey;
   final IdentityContactInterchangeableHandler<K> keyData;
   final bool? passphraseIsStored;
   final bool isExpired;
   final bool isRevoked;
-  final ({RevocationReasonTag? tag, String description})? revocationReason;
+  final ValueNotifier<KeyRevocationReason?> revocationReason;
+  final VoidCallback? onUpdate;
   final VoidCallback? onDeleted;
 
   const new({
@@ -763,8 +832,34 @@ class IdentityDetailScreen<K extends Object> extends StatelessWidget {
     required this.isExpired,
     required this.isRevoked,
     required this.revocationReason,
+    required this.onUpdate,
     required this.onDeleted,
   });
+
+  @override
+  State<IdentityDetailScreen<K>> createState() =>
+      _IdentityDetailScreenState<K>();
+}
+
+class _IdentityDetailScreenState<K extends Object>
+    extends State<IdentityDetailScreen<K>> {
+  @override
+  void initState() {
+    super.initState();
+    widget.parsedKey.addListener(onUpdate);
+    widget.revocationReason.addListener(onUpdate);
+  }
+
+  @override
+  void dispose() {
+    widget.parsedKey.removeListener(onUpdate);
+    widget.revocationReason.removeListener(onUpdate);
+    super.dispose();
+  }
+
+  void onUpdate() {
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -772,7 +867,7 @@ class IdentityDetailScreen<K extends Object> extends StatelessWidget {
     final colorScheme = ColorScheme.of(context);
     final appLocalizations = AppLocalizations.of(context);
 
-    return ConstrainedBox(
+    Widget content() => ConstrainedBox(
       constraints: BoxConstraints(maxHeight: size.height / 4 * 3),
       child: SingleChildScrollView(
         child: Padding(
@@ -787,7 +882,7 @@ class IdentityDetailScreen<K extends Object> extends StatelessWidget {
                 title: Wrap(
                   spacing: 2,
                   runSpacing: 2,
-                  children: users.toList(),
+                  children: widget.users.toList(),
                 ),
                 backgroundStyle: .lightened,
               ),
@@ -796,18 +891,22 @@ class IdentityDetailScreen<K extends Object> extends StatelessWidget {
                   Text(appLocalizations.identityDetailsHeadline),
                 ),
                 [
-                  if (isRevoked && revocationReason != null)
+                  if (widget.isRevoked && widget.revocationReason.value != null)
                     MaterialListTile(
                       leading: Icon(
                         Icons.block,
                         color: colorScheme.onErrorContainer,
                       ),
                       title: Text(appLocalizations.identityRevoked),
-                      subtitle: revocationReason!.description.isNotEmpty
-                          ? Text(revocationReason!.description, maxLines: 2)
+                      subtitle:
+                          widget.revocationReason.value!.description.isNotEmpty
+                          ? Text(
+                              widget.revocationReason.value!.description,
+                              maxLines: 2,
+                            )
                           : null,
-                      trailing: revocationReason!.tag != null
-                          ? Text(switch (revocationReason!.tag!) {
+                      trailing: widget.revocationReason.value!.tag != null
+                          ? Text(switch (widget.revocationReason.value!.tag!) {
                               RevocationReasonTag.noReason =>
                                 appLocalizations
                                     .identityRevocationReasonNoReason,
@@ -835,48 +934,60 @@ class IdentityDetailScreen<K extends Object> extends StatelessWidget {
                     subtitle: Text(
                       DateFormat.yMMMd(appLocalizations.localeName)
                           .add_Hm()
-                          .format(keyData.createdAt),
+                          .format(widget.keyData.createdAt),
                     ),
                     backgroundStyle: .lightened,
                   ),
                   MaterialListTile(
                     leading: Icon(
                       Icons.event_busy,
-                      color: isExpired ? colorScheme.onErrorContainer : null,
+                      color: widget.isExpired
+                          ? colorScheme.onErrorContainer
+                          : null,
                     ),
                     title: Text(appLocalizations.identityExpiration),
                     subtitle: Text(
-                      keyData.expiresAt != null
+                      widget.keyData.expiresAt != null
                           ? DateFormat.yMMMd(appLocalizations.localeName)
                                 .add_Hm()
-                                .format(keyData.expiresAt!)
+                                .format(widget.keyData.expiresAt!)
                           : appLocalizations.identityExpirationNever,
                     ),
-                    tileColor: isExpired ? colorScheme.errorContainer : null,
-                    textColor: isExpired ? colorScheme.onErrorContainer : null,
+                    tileColor: widget.isExpired
+                        ? colorScheme.errorContainer
+                        : null,
+                    textColor: widget.isExpired
+                        ? colorScheme.onErrorContainer
+                        : null,
                     backgroundStyle: .lightened,
                   ),
                 ],
               ),
               ...MaterialListTile.group([
                 MaterialListTile(
-                  leading: Icon(Icons.sports_mma),
-                  title: Text(appLocalizations.identityKeyStrength),
-                  subtitle: Text(
-                    parsedKey?.keyStrength != null
-                        ? parsedKey!.keyStrength.toString()
-                        : appLocalizations.valueMissing,
-                  ),
+                  leading: Icon(Icons.functions),
+                  title: Text(appLocalizations.identityKeyAlgorithm),
+                  subtitle: Text(switch (widget.parsedKey.value!.keyAlgorithm) {
+                    .x25519 || .ed25519 || .eddsaLegacy => "Curve25519",
+                    .rsaEncryptSign || .rsaEncrypt || .rsaSign => "RSA",
+                    _ => appLocalizations.unknown,
+                  }),
                   backgroundStyle: .lightened,
                 ),
+                if (widget.parsedKey.value!.keyAlgorithm
+                    case .rsaEncryptSign || .rsaEncrypt || .rsaSign)
+                  MaterialListTile(
+                    leading: Icon(Icons.sports_mma),
+                    title: Text(appLocalizations.identityKeyStrength),
+                    subtitle: Text(
+                      widget.parsedKey.value!.keyStrength.toString(),
+                    ),
+                    backgroundStyle: .lightened,
+                  ),
                 MaterialListTile(
                   leading: Icon(Icons.numbers),
                   title: Text(appLocalizations.identityKeyVersion),
-                  subtitle: Text(
-                    parsedKey?.version != null
-                        ? parsedKey!.version.toString()
-                        : appLocalizations.valueMissing,
-                  ),
+                  subtitle: Text(widget.parsedKey.value!.version.toString()),
                   backgroundStyle: .lightened,
                 ),
               ]),
@@ -886,37 +997,52 @@ class IdentityDetailScreen<K extends Object> extends StatelessWidget {
                   title: Text(appLocalizations.identityKeyId),
                   subtitle: Builder(
                     builder: (context) => Text(
-                      parsedKey?.keyID != null
-                          ? parsedKey!.keyID
-                                .map((e) => e.toRadixString(16))
-                                .join()
-                                .toUpperCase()
-                          : appLocalizations.valueMissing,
+                      widget.parsedKey.value!.keyID
+                          .map((e) => e.toRadixString(16))
+                          .join(),
                       style: DefaultTextStyle.of(context).style.googleSansCode,
                     ),
+                  ),
+                  onLongPress: () => copyDataInt(
+                    context,
+                    widget.parsedKey.value!.keyID
+                        .map((e) => e.toRadixString(16))
+                        .join(),
+                    false,
                   ),
                   backgroundStyle: .lightened,
                 ),
                 MaterialListTile(
                   leading: Icon(Icons.fingerprint),
                   title: Text(appLocalizations.identityFingerprint),
-                  subtitle: Builder(
-                    builder: (context) => Text(
-                      formatFingerprint(keyData.fingerprint),
-                      style: DefaultTextStyle.of(context).style.googleSansCode,
+                  subtitle: FittedBox(
+                    fit: .scaleDown,
+                    alignment: .centerStart,
+                    child: Builder(
+                      builder: (context) => Text(
+                        formatFingerprint(widget.keyData.fingerprint),
+                        style: DefaultTextStyle.of(context)
+                            .style
+                            .googleSansCode,
+                      ),
                     ),
+                  ),
+                  onLongPress: () => copyDataInt(
+                    context,
+                    formatFingerprint(widget.keyData.fingerprint),
+                    false,
                   ),
                   backgroundStyle: .lightened,
                 ),
               ]),
-              if (passphraseIsStored != null)
+              if (widget.passphraseIsStored != null)
                 MaterialListTile(
                   leading: Icon(
-                    passphraseIsStored == true
+                    widget.passphraseIsStored == true
                         ? Icons.bookmark
                         : Icons.bookmark_border,
-                    color: passphraseIsStored != null
-                        ? passphraseIsStored!
+                    color: widget.passphraseIsStored != null
+                        ? widget.passphraseIsStored!
                               ? Colors.lightBlueAccent.harmonizeWith(
                                   colorScheme.primary,
                                 )
@@ -924,7 +1050,7 @@ class IdentityDetailScreen<K extends Object> extends StatelessWidget {
                         : null,
                   ),
                   title: Text(
-                    passphraseIsStored == true
+                    widget.passphraseIsStored == true
                         ? appLocalizations.identityPassphraseStored
                         : appLocalizations.identityPassphraseNotStored,
                   ),
@@ -939,10 +1065,12 @@ class IdentityDetailScreen<K extends Object> extends StatelessWidget {
                     leading: Icon(Icons.file_upload_outlined),
                     title: Text(appLocalizations.identityExportKey),
                     backgroundStyle: .lightened,
-                    onTap: () =>
-                        keyData.export(userIds: userIds, context: context),
+                    onTap: () => widget.keyData.export(
+                      userIds: widget.userIds,
+                      context: context,
+                    ),
                   ),
-                  if (keyData.exportableAsBackup)
+                  if (widget.keyData.exportableAsBackup)
                     MaterialListTile(
                       leading: IconCraft(
                         Icon(Icons.file_upload_outlined),
@@ -958,31 +1086,28 @@ class IdentityDetailScreen<K extends Object> extends StatelessWidget {
                       ),
                       title: Text(appLocalizations.identityExportBackup),
                       backgroundStyle: .lightened,
-                      onTap: () => keyData.export(
+                      onTap: () => widget.keyData.export(
                         asBackup: true,
-                        userIds: userIds,
+                        userIds: widget.userIds,
                         context: context,
                       ),
                     ),
                   MaterialListTile(
                     leading: Icon(Icons.sync),
-                    title: Text(
-                      keyData.exportableAsBackup
-                          ? appLocalizations.identityUpdatePublicKey
-                          : appLocalizations.identityUpdateKey,
-                    ),
+                    title: Text(appLocalizations.identityUpdateKey),
                     backgroundStyle: .lightened,
                     onTap: () async {
                       final messenger = ScaffoldMessenger.of(context);
                       try {
-                        final origin = await keyData.updatePublicKey(
+                        final origin = await widget.keyData.updatePublicKey(
                           context,
-                          email: userIds.first.email,
+                          email: widget.userIds.first.email,
                         );
                         SnackBarManager.showSnackBarOn(
                           messenger,
                           appLocalizations.identityPublicKeyUpdated(origin),
                         );
+                        widget.onUpdate?.call();
                       } catch (e) {
                         SnackBarManager.showSnackBarOn(
                           messenger,
@@ -992,37 +1117,16 @@ class IdentityDetailScreen<K extends Object> extends StatelessWidget {
                         );
                       } finally {
                         if (context.mounted) {
-                          Navigator.of(context).pop();
-                          Navigator.of(context).pop();
+                          final navigator = Navigator.of(context);
+                          if (navigator.canPop()) navigator.pop();
+                          if (navigator.canPop()) navigator.pop();
                         }
                       }
                     },
                   ),
-                  MaterialListTile(
-                    leading: Icon(Icons.delete_outline),
-                    title: Text(appLocalizations.identityDeleteKey),
-                    backgroundStyle: .lightened,
-                    onTap: () async {
-                      final messenger = ScaffoldMessenger.of(context);
-                      Navigator.of(context).pop();
-                      try {
-                        await keyData.delete();
-                        onDeleted?.call();
-                        SnackBarManager.showSnackBarOn(
-                          messenger,
-                          appLocalizations.identityDeleted,
-                        );
-                      } catch (_) {
-                        SnackBarManager.showSnackBarOn(
-                          messenger,
-                          appLocalizations.identityDeleteFailed,
-                        );
-                      }
-                    },
-                  ),
-                  if (passphraseIsStored == true)
+                  if (widget.passphraseIsStored == true)
                     MaterialListTile(
-                      leading: Icon(Icons.remove_red_eye_outlined),
+                      leading: Icon(Icons.psychology_alt_outlined),
                       title: Text(
                         appLocalizations.identityDeleteStoredPassphrase,
                       ),
@@ -1031,7 +1135,7 @@ class IdentityDetailScreen<K extends Object> extends StatelessWidget {
                         final messenger = ScaffoldMessenger.of(context);
                         Navigator.of(context).pop();
                         try {
-                          await keyData.deleteKeyPassphrase();
+                          await widget.keyData.deleteKeyPassphrase();
                           SnackBarManager.showSnackBarOn(
                             messenger,
                             appLocalizations.identityStoredPassphraseRemoved,
@@ -1045,12 +1149,38 @@ class IdentityDetailScreen<K extends Object> extends StatelessWidget {
                         }
                       },
                     ),
+                  MaterialListTile(
+                    leading: Icon(Icons.delete_outline),
+                    title: Text(appLocalizations.identityDeleteKey),
+                    backgroundStyle: .lightened,
+                    onTap: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      Navigator.of(context).pop();
+                      try {
+                        await widget.keyData.delete();
+                        widget.onDeleted?.call();
+                        SnackBarManager.showSnackBarOn(
+                          messenger,
+                          appLocalizations.identityDeleted,
+                        );
+                      } catch (_) {
+                        SnackBarManager.showSnackBarOn(
+                          messenger,
+                          appLocalizations.identityDeleteFailed,
+                        );
+                      }
+                    },
+                  ),
                 ],
               ),
             ],
           ),
         ),
       ),
+    );
+
+    return BottomSheetMultiState(
+      child: widget.parsedKey.value != null ? content() : null,
     );
   }
 }
@@ -1085,17 +1215,40 @@ class IdentityTileUserIdChip<U extends Object> extends StatelessWidget {
                   child: IdentityTileAvatar(user: user),
                 ),
               ),
-              title: Text(
-                user.name ?? appLocalizations.valueMissing,
-                maxLines: 1,
-                style: textTheme.headlineSmall!.bagelFatOne,
+              title: GestureDetector(
+                child: Text(
+                  user.name ?? appLocalizations.valueMissing,
+                  maxLines: 5,
+                  overflow: .ellipsis,
+                  style: textTheme.headlineSmall!
+                      .copyWith(fontVariations: [FontVariation.width(115)])
+                      .googleSansFlexExt(weight: 550, roundness: 55),
+                ),
               ),
               subtitle: user.comment != null
-                  ? Text(
-                      appLocalizations.identityComment(user.comment!),
-                      maxLines: 2,
+                  ? Builder(
+                      builder: (context) => Text(
+                        appLocalizations.identityComment(user.comment!),
+                        maxLines: 2,
+                        style: DefaultTextStyle.of(context).style
+                            .copyWith(
+                              fontVariations: [
+                                FontVariation.width(110),
+                                FontVariation("GRAD", 60),
+                              ],
+                            )
+                            .googleSansFlexExt(roundness: 55),
+                      ),
                     )
                   : null,
+              onLongPress: () {
+                copyDataInt(
+                  context,
+                  "${user.name ?? appLocalizations.valueMissing} ${user.comment != null ? "(${user.comment})" : ""}"
+                      .trim(),
+                  false,
+                );
+              },
               backgroundStyle: .lightened,
             ),
             MaterialListTile(
@@ -1116,12 +1269,18 @@ class IdentityTileUserIdChip<U extends Object> extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
+
+    var parentFgColor = DefaultTextStyle.of(context).style.color;
+    if (parentFgColor == colorScheme.onSurface) parentFgColor = null;
+
     return InkWell(
       borderRadius: BorderRadius.circular(50),
       onTap: () => _showDetailsDialog(context: context, textTheme: textTheme),
       child: DecoratedBox(
         decoration: ShapeDecoration(
-          shape: StadiumBorder(side: BorderSide(color: colorScheme.outline)),
+          shape: StadiumBorder(
+            side: BorderSide(color: parentFgColor ?? colorScheme.outline),
+          ),
         ),
         child: Row(
           mainAxisSize: .min,
@@ -1141,9 +1300,13 @@ class IdentityTileUserIdChip<U extends Object> extends StatelessWidget {
               ),
             ),
             SizedBox(width: 8),
-            Text(
-              "${user.name ?? user.email}${user.comment != null ? " ${AppLocalizations.of(context).identityComment(user.comment!)}" : ""}",
-              style: textTheme.labelLarge,
+            Flexible(
+              child: Text(
+                "${user.name ?? user.email}${user.comment != null ? " ${AppLocalizations.of(context).identityComment(user.comment!)}" : ""}",
+                style: textTheme.labelLarge?.copyWith(color: parentFgColor),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             SizedBox(width: 12),
           ],
@@ -1156,19 +1319,44 @@ class IdentityTileUserIdChip<U extends Object> extends StatelessWidget {
 class IdentityTileAvatar<U extends Object> extends StatelessWidget {
   final UserIdInterchangeableHandler<U> user;
   final double? radius;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
 
-  const new({super.key, required this.user, this.radius});
+  const new({
+    super.key,
+    required this.user,
+    this.radius,
+    this.backgroundColor,
+    this.foregroundColor,
+  });
 
   @override
   Widget build(BuildContext context) {
     return CircleAvatar(
       radius: radius,
+      backgroundColor: backgroundColor,
+      foregroundColor: foregroundColor,
       child: Builder(
         builder: (context) => Text(
           user.email[0].toUpperCase(),
           style: DefaultTextStyle.of(context).style.googleSansCode,
         ),
       ),
+    );
+  }
+}
+
+Future<void> copyDataInt(
+  BuildContext context,
+  String? data, [
+  bool showSnackBar = true,
+]) async {
+  if (data == null) return;
+  await Clipboard.setData(ClipboardData(text: data));
+  if (context.mounted && showSnackBar) {
+    SnackBarManager.showSnackBar(
+      context,
+      MaterialHelperLocalizations.of(context)!.copiedToClipboard,
     );
   }
 }

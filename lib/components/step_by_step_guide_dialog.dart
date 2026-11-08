@@ -1,8 +1,9 @@
 import 'package:material_graphics/material_graphics.dart';
 import 'package:material_helper/material_helper.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:mobile/l10n/app_localizations.dart';
-import 'package:mobile/main.dart';
+
+import '../l10n/app_localizations.dart';
+import '../main.dart';
 
 Future<void> showStepByStepGuideDialog(
   BuildContext context, {
@@ -35,7 +36,7 @@ Future<void> showStepByStepGuideDialog(
       )
       .toList();
 
-  return showInfoDialog(
+  return showAlertDialog(
     context: context,
     title: title,
     contentPadding: EdgeInsets.zero,

@@ -3,20 +3,24 @@ import 'dart:async';
 import 'package:material_graphics/material_graphics.dart';
 import 'package:material_helper/material_helper.dart';
 import 'package:material_ui/material_ui.dart' hide Key;
-import 'package:mobile/components/identity_tile.dart';
-import 'package:mobile/components/step_by_step_guide_dialog.dart';
-import 'package:mobile/database/key_store.dart';
-import 'package:mobile/l10n/app_localizations.dart';
 import 'package:shared/shared.dart';
 
+import '../components/identity_tile.dart';
+import '../components/step_by_step_guide_dialog.dart';
+import '../database/key_store.dart';
+import '../l10n/app_localizations.dart';
+
 class ScreenIdentities extends StatefulWidget {
-  final void Function(int id, String display, String fingerprint)
+  final void Function(int id, String display, DateTime? expiration)
   onIdentitySelected;
+  final void Function(int id, String display, DateTime? expiration)
+  onIdentityUpdated;
   final void Function(int id) onIdentityDeleted;
 
   const new({
     super.key,
     required this.onIdentitySelected,
+    required this.onIdentityUpdated,
     required this.onIdentityDeleted,
   });
 
@@ -108,7 +112,8 @@ class _ScreenIdentitiesState extends State<ScreenIdentities> {
                 _loading = false;
                 if (!mounted) return;
                 setState(() {});
-                if (result == UnlockResult.deviceReauthRequired) {
+                if (result == UnlockResult.deviceReauthRequired &&
+                    context.mounted) {
                   showKeyStoreReauthRequiredDialog(context);
                 }
               },
@@ -182,32 +187,27 @@ class _ScreenIdentitiesState extends State<ScreenIdentities> {
                 final userIds = _keyUserIds
                     .where((c) => c.parent == key.id)
                     .toList();
+                void onSelectedUpdated(
+                  void Function(int, String, DateTime?) callback,
+                ) => callback(
+                  key.id,
+                  userIds
+                      .map(
+                        (u) => UserId(
+                          name: u.name,
+                          comment: u.comment,
+                          email: u.email,
+                        ).toString(),
+                      )
+                      .join(","),
+                  key.expiresAt,
+                );
                 return IdentityTile(
                   key: ValueKey(key.id),
                   keyData: .new(key),
                   userIds: userIds.toInterchangeable(),
-                  onTap: () {
-                    widget.onIdentitySelected(
-                      key.id,
-                      userIds
-                          .map(
-                            (u) => UserId(
-                              name: u.name,
-                              comment: u.comment,
-                              email: u.email,
-                            ).toString(),
-                          )
-                          .join(","),
-                      key.fingerprint
-                          .map(
-                            (b) => b
-                                .toRadixString(16)
-                                .padLeft(2, "0")
-                                .toUpperCase(),
-                          )
-                          .join(),
-                    );
-                  },
+                  onTap: () => onSelectedUpdated(widget.onIdentitySelected),
+                  onUpdate: () => onSelectedUpdated(widget.onIdentityUpdated),
                   onDeleted: () => widget.onIdentityDeleted(key.id),
                 );
               }).toList(),

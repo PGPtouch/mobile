@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math' as math;
 
+import 'package:dart_pg/dart_pg.dart' show OpenPGP, PacketList, PrivateKey;
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart';
@@ -9,10 +11,12 @@ import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter/widgets.dart' show BuildContext;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:material_helper/material_helper.dart';
-import 'package:mobile/components/passphrase_input.dart';
-import 'package:mobile/l10n/app_localizations.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared/shared.dart';
+
+import '../components/passphrase_input.dart';
+import '../components/research_point.dart';
+import '../l10n/app_localizations.dart';
 
 part 'key_store.g.dart';
 
@@ -32,7 +36,7 @@ class Keys extends Table {
 extension KeyExtension on Key {
   List<KeyUserIdsCompanion> generateInsertsForUserIds(List<String> userIds) {
     if (userIds.isEmpty) return const [];
-    final parsed = userIds.map((u) => UserId.parse(u));
+    final parsed = userIds.map(UserId.parse);
     return parsed
         .map(
           (u) => KeyUserIdsCompanion.insert(
@@ -160,7 +164,7 @@ bool _isAlgorithmChange(Object error) =>
 @visibleForTesting
 bool isDeviceReauthRequired(Object error) =>
     error is PlatformException &&
-    ("${error.message}${error.details}").contains(
+    "${error.message}${error.details}".contains(
       "UserNotAuthenticatedException",
     );
 
@@ -195,8 +199,12 @@ final class KeyStoreHandler extends ChangeNotifier {
       .join()
       .toLowerCase();
 
-  Future<UnlockResult> unlock(AppLocalizations appLocalizations) async {
+  Future<UnlockResult> unlock(
+    AppLocalizations appLocalizations, {
+    String trigger = "manual",
+  }) async {
     final old = _isLocked;
+    final stopwatch = Stopwatch()..start();
     try {
       try {
         await _unlockOnce(appLocalizations);
@@ -205,12 +213,26 @@ final class KeyStoreHandler extends ChangeNotifier {
         await _unlockOnce(appLocalizations);
       }
       _isLocked = false;
+      if (old && !_isLocked) {
+        ResearchPoint.trackEvent("keyStoreUnlock", {
+          "outcome": "unlocked",
+          "trigger": trigger,
+          "durationMs": stopwatch.elapsedMilliseconds,
+        });
+      }
       return UnlockResult.unlocked;
     } catch (e, s) {
       debugPrint("Failed to unlock key store: $e\n$s");
       _keyStore = null;
       _isLocked = true;
-      return isDeviceReauthRequired(e)
+      final deviceReauthRequired = isDeviceReauthRequired(e);
+      ResearchPoint.trackEvent("keyStoreUnlock", {
+        "outcome": deviceReauthRequired ? "reauthRequired" : "failed",
+        "trigger": trigger,
+        "errorCode": e is PlatformException ? e.code : e.runtimeType.toString(),
+        "durationMs": stopwatch.elapsedMilliseconds,
+      });
+      return deviceReauthRequired
           ? UnlockResult.deviceReauthRequired
           : UnlockResult.failed;
     } finally {
@@ -219,7 +241,7 @@ final class KeyStoreHandler extends ChangeNotifier {
   }
 
   Future<void> _unlockOnce(AppLocalizations appLocalizations) async {
-    var nonce = (await _storage(appLocalizations).read(key: "nonce"));
+    var nonce = await _storage(appLocalizations).read(key: "nonce");
     if (nonce == null) {
       await _keyStore?.close();
       _keyStore = null;
@@ -276,6 +298,16 @@ class KeyStorePgpProvider extends PgpProvider {
   final int id;
   final String? email;
 
+  /// Set when this provider aborted the run on purpose (see
+  /// [passphraseCancelled]) or because the key store could not be unlocked
+  /// (`unlock_<result>`). Used for anonymous outcome statistics only.
+  String? abortReason;
+  static const passphraseCancelled = "passphraseCancelled";
+
+  /// Total time spent decrypting the private key, including wrong
+  /// passphrases. Used for anonymous performance statistics only.
+  int decryptMs = 0;
+
   KeyStorePgpProvider(
     this.context,
     this.appLocalizations, {
@@ -284,13 +316,21 @@ class KeyStorePgpProvider extends PgpProvider {
   });
 
   Key? _key;
-  LocalPgpProvider? _internal;
-  LocalPgpProvider? _unlocked;
 
-  Future<LocalPgpProvider> _getInternal() async {
-    if (_internal != null) return _internal!;
-    final unlock = await KeyStoreHandler.instance.unlock(appLocalizations);
+  // Decoding a key is expensive, so each key is decoded at most once, in a
+  // background isolate, and the result is reused by every method.
+  Future<PrivateKey>? _parsedPrivateKey;
+  Future<bool>? _publicKeyValid;
+  PrivateKey? _decryptedPrivateKey;
+
+  Future<Key> _getKey() async {
+    if (_key != null) return _key!;
+    final unlock = await KeyStoreHandler.instance.unlock(
+      appLocalizations,
+      trigger: "exchange",
+    );
     if (unlock != UnlockResult.unlocked) {
+      abortReason = "unlock_${unlock.name}";
       throw StateError("Key store could not be unlocked: $unlock");
     }
     final store = KeyStoreHandler.instance.keyStore!;
@@ -306,35 +346,48 @@ class KeyStorePgpProvider extends PgpProvider {
         "User ID with email $email not found for key $id, cross check failed",
       );
     }
+
+    _parsedPrivateKey = compute(_parsePrivateKey, key.privateData)..ignore();
+    _publicKeyValid = compute(_isPublicKeyValidGlobal, key.publicData)
+      ..ignore();
     _key = key;
-    _internal = LocalPgpProvider(key.publicData, key.privateData);
-    return _internal!;
+
+    return key;
   }
 
   @override
-  Future<Uint8List> getPublicKey() async =>
-      (await _getInternal()).getPublicKey();
+  Future<Uint8List> getPublicKey() async => (await _getKey()).publicData;
 
   @override
-  Future<bool> isPrivateKeyEncrypted() async =>
-      (await _getInternal()).isPrivateKeyEncrypted();
+  Future<bool> isPrivateKeyEncrypted() async {
+    await _getKey();
+    return (await _parsedPrivateKey!).isEncrypted;
+  }
+
+  @override
+  Future<bool> isPublicKeyValid() async {
+    await _getKey();
+    return await _publicKeyValid!;
+  }
 
   @override
   Future<bool> tryDecryptPrivateKey(String privateKeyPassphrase) async {
-    await _getInternal();
-    final key = _key!;
+    final key = await _getKey();
+    final parsed = await _parsedPrivateKey!;
 
-    if (!await isPrivateKeyEncrypted()) return true;
+    if (!parsed.isEncrypted) return true;
 
     final storedPassphrase = await KeyStoreHandler.instance.getKeyPassphrase(
       key.fingerprint,
     );
-    if (storedPassphrase != null && await _unlock(key, storedPassphrase)) {
+    if (storedPassphrase != null && await _unlock(parsed, storedPassphrase)) {
       return true;
     }
 
     final userIds = await key.getUserIds(KeyStoreHandler.instance.keyStore!);
     if (!context.mounted) return false;
+    var attempts = 0;
+    final promptStopwatch = Stopwatch()..start();
     final result = await showPassphraseInputDialog(
       context,
       identity: userIds
@@ -348,11 +401,24 @@ class KeyStorePgpProvider extends PgpProvider {
           .toList(),
       fingerprint: key.fingerprint,
       validate: (passphrase) async {
-        final decrypted = await _unlock(key, passphrase);
+        attempts++;
+        final decrypted = await _unlock(parsed, passphrase);
         return decrypted ? null : appLocalizations.passphraseInputWrong;
       },
     );
-    if (result == null) return false;
+    final submitted = result != null && result.passphrase.isNotEmpty;
+    ResearchPoint.trackEvent("passphrasePrompt", {
+      "outcome": submitted ? "submitted" : "cancelled",
+      "attempts": attempts,
+      "storedPassphraseFailed": storedPassphrase != null,
+      "remembered": result?.remember ?? false,
+      "durationMs": promptStopwatch.elapsedMilliseconds,
+      "decryptMs": decryptMs,
+    });
+    if (result == null || result.passphrase.isEmpty) {
+      abortReason = passphraseCancelled;
+      throw StateError("Passphrase input cancelled or empty");
+    }
     if (result.remember) {
       await KeyStoreHandler.instance.setKeyPassphrase(
         key.fingerprint,
@@ -362,11 +428,12 @@ class KeyStorePgpProvider extends PgpProvider {
     return true;
   }
 
-  Future<bool> _unlock(Key key, String passphrase) async {
-    final decrypted = await decryptPrivateKey(key.privateData, passphrase);
+  Future<bool> _unlock(PrivateKey parsed, String passphrase) async {
+    final stopwatch = Stopwatch()..start();
+    final decrypted = await _decryptParsedPrivateKey(parsed, passphrase);
+    decryptMs += stopwatch.elapsedMilliseconds;
     if (decrypted == null) return false;
-    _unlocked?.destroy();
-    _unlocked = LocalPgpProvider(key.publicData, decrypted);
+    _decryptedPrivateKey = decrypted;
     return true;
   }
 
@@ -374,19 +441,66 @@ class KeyStorePgpProvider extends PgpProvider {
   Future<Uint8List> signToDetached(
     Uint8List data,
     String? privateKeyPassphrase,
-  ) async => (_unlocked ?? await _getInternal()).signToDetached(
-    data,
-    privateKeyPassphrase,
-  );
-
-  @override
-  void destroy() {
-    _internal?.destroy();
-    _unlocked?.destroy();
-    _unlocked = null;
-    _key = null;
+  ) async {
+    final key = await _getKey();
+    final rawPrivateKey = _decryptedPrivateKey ?? await _parsedPrivateKey!;
+    // a decrypted key still reports isEncrypted, so isDecrypted is what tells
+    // whether the secret key material is available
+    final needsDecryption = !rawPrivateKey.isDecrypted;
+    if (needsDecryption && privateKeyPassphrase == null) {
+      throw ArgumentError.value(
+        key.privateData,
+        "privateKey",
+        "Private key is encrypted; privateKeyPassphrase is required",
+      );
+    }
+    var privateKey = rawPrivateKey;
+    if (needsDecryption) {
+      privateKey = await _decryptOrThrow(rawPrivateKey, privateKeyPassphrase!);
+      _decryptedPrivateKey = privateKey;
+    }
+    return _signDetached(data, privateKey);
   }
 
   @override
-  String toString() => "KeyStorePgpProvider(internal: $_internal)";
+  void destroy() {
+    _key?.publicData.destroy();
+    _key?.privateData.destroy();
+    _key = null;
+    _parsedPrivateKey = null;
+    _publicKeyValid = null;
+    _decryptedPrivateKey = null;
+  }
+
+  @override
+  String toString() => "KeyStorePgpProvider(<REDACTED>)";
 }
+
+// These run in background isolates, so they must not capture a provider.
+PrivateKey _parsePrivateKey(Uint8List bytes) =>
+    PrivateKey(PacketList.decode(bytes));
+
+Future<PrivateKey?> _decryptParsedPrivateKey(
+  PrivateKey key,
+  String passphrase,
+) async {
+  try {
+    return await _decryptOrThrow(key, passphrase);
+  } catch (_) {
+    return null;
+  }
+}
+
+Future<PrivateKey> _decryptOrThrow(PrivateKey key, String passphrase) =>
+    Isolate.run(() => key.decrypt(passphrase) as PrivateKey);
+
+Future<Uint8List> _signDetached(Uint8List data, PrivateKey key) => Isolate.run(
+  () => Uint8List.fromList(
+    OpenPGP.signDetached(OpenPGP.createLiteralMessage(data), [
+      key,
+    ]).packetList.encode(),
+  ),
+);
+
+// the provider's own method shadows the top-level function
+const _isPublicKeyValidGlobal = isPublicKeyValid;

@@ -13,21 +13,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'PGPtouch';
 
   @override
-  String get contactModeInitializing => 'Initializing...';
-
-  @override
-  String get contactModeTapOther => 'Tap device';
-
-  @override
-  String get contactModeHoldOther => 'Hold...';
-
-  @override
-  String get transactionSuccess => 'Success!';
-
-  @override
-  String get transactionFailure => 'Failure';
-
-  @override
   String get unknown => 'Unknown';
 
   @override
@@ -36,22 +21,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String transactionResult(String result) {
-    return 'Result: $result';
-  }
-
-  @override
-  String transactionError(String error) {
+  String runError(String error) {
     return 'Error: $error';
   }
 
   @override
-  String transactionFailureReason(String reason) {
+  String runFailureReason(String reason) {
     return 'Failure: $reason';
   }
 
   @override
-  String transactionAdditionalInfo(String info) {
+  String runAdditionalInfo(String info) {
     return '($info)';
   }
 
@@ -59,29 +39,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noDetails => 'No details';
 
   @override
-  String get stopTransaction => 'Stop transaction';
+  String get stopRun => 'Stop run';
 
   @override
-  String get restartTransaction => 'Restart transaction';
+  String get discardRun => 'Discard run';
 
   @override
-  String get grantPermissions => 'Grant permissions';
+  String get newRun => 'New run';
 
   @override
-  String get enableNfc => 'Enable NFC';
+  String get goButton => 'Go!';
 
   @override
-  String get enableBluetooth => 'Enable Bluetooth';
+  String get selectIdentity => 'Select an Identity';
 
   @override
-  String get startTransaction => 'Start transaction';
+  String get nfcUnavailableHint =>
+      'NFC seems to not be available on this device, but required for PGPtouch to work properly.';
 
   @override
-  String get nfcNotAvailable => 'NFC is not available on this device.';
+  String get bluetoothUnavailableHint =>
+      'Bluetooth seems to not be available on this device, but required for PGPtouch to work properly.';
 
   @override
-  String get bluetoothNotAvailable =>
-      'Bluetooth is not available on this device.';
+  String get permissionsRequiredHint =>
+      'There are still device permissions you need to grant for PGPtouch to work properly. Click here to do so.';
+
+  @override
+  String get nfcDisabledHint =>
+      'NFC is not enabled, but required for PGPtouch to work properly. Click here to enable it.';
+
+  @override
+  String get bluetoothDisabledHint =>
+      'Bluetooth is not enabled, but required for PGPtouch to work properly. Click here to enable it.';
 
   @override
   String get navContacts => 'Contacts';
@@ -330,6 +320,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get identityKeyStrength => 'Key strength';
 
   @override
+  String get identityKeyAlgorithm => 'Key algorithm';
+
+  @override
   String get identityKeyVersion => 'Key version';
 
   @override
@@ -365,10 +358,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get identityExportBackup => 'Export as backup';
 
   @override
-  String get identityDeleteKey => 'Delete key';
+  String get identityDeleteStoredPassphrase => 'Forget passphrase';
 
   @override
-  String get identityDeleteStoredPassphrase => 'Delete stored passphrase';
+  String get identityDeleteKey => 'Delete';
 
   @override
   String get identityBackupExported => 'Backup exported.';
@@ -396,9 +389,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Failed to remove stored passphrase.';
 
   @override
-  String get identityUpdatePublicKey => 'Update public key';
-
-  @override
   String get identityUpdateKey => 'Update key';
 
   @override
@@ -416,13 +406,80 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsHkpKeyServers => 'HKP key servers';
 
   @override
+  String get settingsBetaFeatures => 'Beta features';
+
+  @override
+  String get settingsBetaFeaturesDescription =>
+      'Opt-in to upcoming features whenever they become available.';
+
+  @override
   String get settingsMiscellaneous => 'Miscellaneous';
 
   @override
-  String get settingsDeleteStoredPassphrases => 'Delete stored passphrases';
+  String get settingsClearSelectedIdentity => 'Clear selected identity';
+
+  @override
+  String get settingsClearSelectedIdentityDescription =>
+      'Forgets the current selection for an identity. This does not delete the identity itself.';
+
+  @override
+  String get settingsClearSelectedIdentitySuccess =>
+      'Cleared selected identity.';
+
+  @override
+  String get settingsPrivacy => 'Privacy';
+
+  @override
+  String get settingsEnableTracking => 'Enable tracking';
+
+  @override
+  String get settingsEnableTrackingDescription =>
+      'Allow the app to track anonymous usage data to improve its services.';
 
   @override
   String get settingsAboutApp => 'About this app';
+
+  @override
+  String get settingsExporting => 'Exporting';
+
+  @override
+  String get settingsExportingDescription =>
+      'Importing files back into the app is done on the specific overview pages for contacts and identities respectively.';
+
+  @override
+  String get settingsExportAllContacts => 'All contacts';
+
+  @override
+  String get settingsExportAllIdentities => 'All identities';
+
+  @override
+  String get settingsExportAllIdentitiesBackup => 'All identities as backup';
+
+  @override
+  String get settingsExportInsecureTitle => 'Use insecure export?';
+
+  @override
+  String get settingsExportInsecureDescription =>
+      'Exporting identities in this way is insecure, as anyone who gains access to the exported file can import all your private OpenPGP keys without your consent.\nUse the ‘Export identities as backup’ option for a safer method.';
+
+  @override
+  String get settingsExportNoContacts => 'No contacts to export.';
+
+  @override
+  String get settingsExportNoIdentities => 'No identities to export.';
+
+  @override
+  String get settingsExportContactsSuccess => 'Contacts exported successfully.';
+
+  @override
+  String get settingsExportContactsFailed => 'Failed to export contacts.';
+
+  @override
+  String get settingsExportIdentitiesSuccess =>
+      'Identities exported successfully.';
+
+  @override
+  String get settingsExportIdentitiesFailed => 'Failed to export identities.';
 
   @override
   String get appBarUnlockTooltip => 'Unlock vault';
@@ -432,4 +489,166 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appBarSettingsTooltip => 'Settings';
+
+  @override
+  String get zxcvbnWarningStraightRows =>
+      'Straight rows of keys are easy to guess';
+
+  @override
+  String get zxcvbnWarningShortKeyboardPatterns =>
+      'Short keyboard patterns are easy to guess';
+
+  @override
+  String get zxcvbnWarningRepeatsSingleChar =>
+      'Repeats like \"aaa\" are easy to guess';
+
+  @override
+  String get zxcvbnWarningRepeatsMultiChar =>
+      'Repeats like \"abcabcabc\" are only slightly harder to guess than \"abc\"';
+
+  @override
+  String get zxcvbnWarningSequences =>
+      'Sequences like abc or 6543 are easy to guess';
+
+  @override
+  String get zxcvbnWarningRecentYears => 'Recent years are easy to guess';
+
+  @override
+  String get zxcvbnWarningDates => 'Dates are often easy to guess';
+
+  @override
+  String get zxcvbnWarningTop10Password => 'This is a top-10 common password';
+
+  @override
+  String get zxcvbnWarningTop100Password => 'This is a top-100 common password';
+
+  @override
+  String get zxcvbnWarningVeryCommonPassword =>
+      'This is a very common password';
+
+  @override
+  String get zxcvbnWarningSimilarToCommonPassword =>
+      'This is similar to a commonly used password';
+
+  @override
+  String get zxcvbnWarningWordByItself => 'A word by itself is easy to guess';
+
+  @override
+  String get zxcvbnWarningNamesByThemselves =>
+      'Names and surnames by themselves are easy to guess';
+
+  @override
+  String get zxcvbnWarningCommonNames =>
+      'Common names and surnames are easy to guess';
+
+  @override
+  String get createIdentityTitle => 'New identity';
+
+  @override
+  String get createIdentityCreate => 'Create';
+
+  @override
+  String get createIdentityCreated => 'The identity was created successfully.';
+
+  @override
+  String get createIdentityHint =>
+      'You need to set a passphrase and add at least one User ID to proceed.';
+
+  @override
+  String get createIdentityPassphraseSet => 'Set successfully';
+
+  @override
+  String get createIdentityPassphraseDialogTitle => 'Set passphrase';
+
+  @override
+  String get createIdentityPassphraseDialogDescription =>
+      'You’ll need it to unlock the key, so every time you use it in PGPtouch.';
+
+  @override
+  String createIdentityPassphraseInsecure(String guesses) {
+    return 'Insecure passphrase. An attacker would need an average of $guesses guesses.';
+  }
+
+  @override
+  String get createIdentityExpirationRemoveTooltip => 'Remove expiration';
+
+  @override
+  String get createIdentityUserIdsHeadline => 'User IDs';
+
+  @override
+  String get createIdentityUserIdRemoveTooltip => 'Remove User ID';
+
+  @override
+  String get createIdentityUserIdAdd => 'Add User ID';
+
+  @override
+  String get createIdentityAdvancedHeadline => 'Advanced';
+
+  @override
+  String get createIdentityAlgorithmTitle => 'Algorithm';
+
+  @override
+  String get createIdentityAlgorithmDialogTitle => 'Set algorithm';
+
+  @override
+  String get createIdentityAlgorithmRecommendedTooltip =>
+      'This is the recommended modern algorithm type.';
+
+  @override
+  String get createIdentityRsaKeySizeTitle => 'RSA Key Size';
+
+  @override
+  String get createIdentityRsaKeySizeDialogTitle => 'Set RSA key size';
+
+  @override
+  String get createIdentityRsaKeySizeNormal => 'Normal';
+
+  @override
+  String get createIdentityRsaKeySizeMedium => 'Medium';
+
+  @override
+  String get createIdentityRsaKeySizeHigh => 'High';
+
+  @override
+  String get createIdentityAllowKeyEncryptionTitle => 'Allow key encryption';
+
+  @override
+  String get createIdentityAllowKeyEncryptionDescription =>
+      'If enabled, the key can later be used for encryption after export.';
+
+  @override
+  String get userIdDialogTitleNew => 'New User ID';
+
+  @override
+  String get userIdDialogTitleEdit => 'Edit User ID';
+
+  @override
+  String get userIdNameLabel => 'Name';
+
+  @override
+  String get userIdCommentLabel => 'Comment';
+
+  @override
+  String get userIdCommentHint => 'At work';
+
+  @override
+  String get userIdEmailLabel => 'Email';
+
+  @override
+  String get userIdSubmit => 'Submit';
+
+  @override
+  String get userIdEmailEmpty => 'Email cannot be empty.';
+
+  @override
+  String get userIdEmailMissingAt => 'Email must contain ‘@’.';
+
+  @override
+  String get userIdEmailTooShort => 'Email must be at least 3 characters long.';
+
+  @override
+  String get userIdCommentInvalidCharacter => 'Comment cannot contain ‘)’.';
+
+  @override
+  String get userIdInvalid => 'Invalid User ID.';
 }

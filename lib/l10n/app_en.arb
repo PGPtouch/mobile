@@ -5,80 +5,45 @@
         "description": "The title of the application",
         "context": "App title and app bar title"
     },
-    "contactModeInitializing": "Initializing...",
-    "@contactModeInitializing": {
-        "description": "Headline shown while the transaction is initializing",
-        "context": "Main screen, transaction status headline"
-    },
-    "contactModeTapOther": "Tap device",
-    "@contactModeTapOther": {
-        "description": "Headline instructing the user to tap the other device",
-        "context": "Main screen, transaction status headline"
-    },
-    "contactModeHoldOther": "Hold...",
-    "@contactModeHoldOther": {
-        "description": "Headline instructing the user to keep holding the devices together",
-        "context": "Main screen, transaction status headline"
-    },
-    "transactionSuccess": "Success!",
-    "@transactionSuccess": {
-        "description": "Headline shown when the transaction finished successfully",
-        "context": "Main screen, transaction status headline"
-    },
-    "transactionFailure": "Failure",
-    "@transactionFailure": {
-        "description": "Headline shown when the transaction did not finish successfully",
-        "context": "Main screen, transaction status headline"
-    },
     "unknown": "Unknown",
     "@unknown": {
         "description": "Fallback shown when a value is not known",
-        "context": "Main screen, transaction details"
+        "context": "Main screen, run details"
     },
     "deviceRole": "Device Role: {role}",
     "@deviceRole": {
-        "description": "Label showing the role of this device in the transaction",
-        "context": "Main screen, transaction details",
+        "description": "Label showing the role of this device in the run",
+        "context": "Main screen, run details",
         "placeholders": {
             "role": {
                 "type": "String"
             }
         }
     },
-    "transactionResult": "Result: {result}",
-    "@transactionResult": {
-        "description": "Label showing the result of the transaction",
-        "context": "Main screen, transaction details",
-        "placeholders": {
-            "result": {
-                "type": "String"
-            }
-        }
-    },
-    "transactionError": "Error: {error}",
-    "@transactionError": {
-        "description": "Label showing the error mode of a failed transaction",
-        "context": "Main screen, transaction details",
+    "runError": "Error: {error}",
+    "@runError": {
+        "description": "Label showing the error mode of a failed run",
+        "context": "Main screen, run details",
         "placeholders": {
             "error": {
                 "type": "String"
             }
         }
     },
-    "transactionFailureReason": "Failure: {reason}",
-    "@transactionFailureReason": {
-        "description": "Label showing the failure mode of a failed transaction",
-        "context": "Main screen, transaction details",
+    "runFailureReason": "Failure: {reason}",
+    "@runFailureReason": {
+        "description": "Label showing the failure mode of a failed run",
+        "context": "Main screen, run details",
         "placeholders": {
             "reason": {
                 "type": "String"
             }
         }
     },
-    "transactionAdditionalInfo": "({info})",
-    "@transactionAdditionalInfo": {
-        "description": "Additional details about a failed transaction, shown in parentheses",
-        "context": "Main screen, transaction details",
+    "runAdditionalInfo": "({info})",
+    "@runAdditionalInfo": {
+        "description": "Additional details about a failed run, shown in parentheses",
+        "context": "Main screen, run details",
         "placeholders": {
             "info": {
                 "type": "String"
@@ -87,48 +52,58 @@
     },
     "noDetails": "No details",
     "@noDetails": {
-        "description": "Fallback shown when a failed transaction has no additional details",
-        "context": "Main screen, transaction details"
+        "description": "Fallback shown when a failed run has no additional details",
+        "context": "Main screen, run details"
     },
-    "stopTransaction": "Stop transaction",
-    "@stopTransaction": {
-        "description": "Button label to stop the current transaction",
-        "context": "Main screen, transaction buttons"
+    "stopRun": "Stop run",
+    "@stopRun": {
+        "description": "Button label and tooltip to stop the current run",
+        "context": "Main screen, run buttons"
     },
-    "restartTransaction": "Restart transaction",
-    "@restartTransaction": {
-        "description": "Button label to restart the transaction",
-        "context": "Main screen, transaction buttons"
+    "discardRun": "Discard run",
+    "@discardRun": {
+        "description": "Tooltip of the button that dismisses a finished run",
+        "context": "Main screen, run buttons"
     },
-    "grantPermissions": "Grant permissions",
-    "@grantPermissions": {
-        "description": "Button label to request the required Bluetooth or location permissions",
-        "context": "Main screen, setup buttons"
+    "newRun": "New run",
+    "@newRun": {
+        "description": "Button label to start a new run after the previous one finished",
+        "context": "Main screen, run buttons"
     },
-    "enableNfc": "Enable NFC",
-    "@enableNfc": {
-        "description": "Button label to open the system settings to turn on NFC",
-        "context": "Main screen, setup buttons"
+    "goButton": "Go!",
+    "@goButton": {
+        "description": "Label of the large start button in its idle state",
+        "context": "Main screen, start button"
     },
-    "enableBluetooth": "Enable Bluetooth",
-    "@enableBluetooth": {
-        "description": "Button label to open the system settings to turn on Bluetooth",
-        "context": "Main screen, setup buttons"
+    "selectIdentity": "Select an Identity",
+    "@selectIdentity": {
+        "description": "Placeholder label shown in the identity selector when no identity is selected",
+        "context": "Main screen, identity selector"
     },
-    "startTransaction": "Start transaction",
-    "@startTransaction": {
-        "description": "Button label to start a transaction",
-        "context": "Main screen, setup buttons"
+    "nfcUnavailableHint": "NFC seems to not be available on this device, but required for PGPtouch to work properly.",
+    "@nfcUnavailableHint": {
+        "description": "Message shown inside the start button when the device has no NFC hardware",
+        "context": "Main screen, start button"
     },
-    "nfcNotAvailable": "NFC is not available on this device.",
-    "@nfcNotAvailable": {
-        "description": "Message shown when the device has no NFC hardware",
-        "context": "Main screen, availability messages"
+    "bluetoothUnavailableHint": "Bluetooth seems to not be available on this device, but required for PGPtouch to work properly.",
+    "@bluetoothUnavailableHint": {
+        "description": "Message shown inside the start button when the device has no Bluetooth hardware",
+        "context": "Main screen, start button"
     },
-    "bluetoothNotAvailable": "Bluetooth is not available on this device.",
-    "@bluetoothNotAvailable": {
-        "description": "Message shown when the device has no Bluetooth hardware",
-        "context": "Main screen, availability messages"
+    "permissionsRequiredHint": "There are still device permissions you need to grant for PGPtouch to work properly. Click here to do so.",
+    "@permissionsRequiredHint": {
+        "description": "Message shown inside the start button when required permissions are still missing; tapping it requests them",
+        "context": "Main screen, start button"
+    },
+    "nfcDisabledHint": "NFC is not enabled, but required for PGPtouch to work properly. Click here to enable it.",
+    "@nfcDisabledHint": {
+        "description": "Message shown inside the start button when NFC is turned off; tapping it opens the system settings",
+        "context": "Main screen, start button"
+    },
+    "bluetoothDisabledHint": "Bluetooth is not enabled, but required for PGPtouch to work properly. Click here to enable it.",
+    "@bluetoothDisabledHint": {
+        "description": "Message shown inside the start button when Bluetooth is turned off; tapping it opens the system settings",
+        "context": "Main screen, start button"
     },
     "navContacts": "Contacts",
     "@navContacts": {
@@ -495,6 +470,11 @@
         "description": "Title of the entry showing the strength of the key",
         "context": "Identities screen, identity details sheet"
     },
+    "identityKeyAlgorithm": "Key algorithm",
+    "@identityKeyAlgorithm": {
+        "description": "Title of the entry showing the algorithm of the key",
+        "context": "Identities screen, identity details sheet"
+    },
     "identityKeyVersion": "Key version",
     "@identityKeyVersion": {
         "description": "Title of the entry showing the OpenPGP version of the key",
@@ -556,14 +536,14 @@
         "description": "Title of the action that exports the key as an encrypted backup file protected by a backup code",
         "context": "Identities screen, identity details sheet, action"
     },
-    "identityDeleteKey": "Delete key",
-    "@identityDeleteKey": {
-        "description": "Title of the action that deletes the key and its stored passphrase",
-        "context": "Identities screen, identity details sheet, action"
-    },
-    "identityDeleteStoredPassphrase": "Delete stored passphrase",
+    "identityDeleteStoredPassphrase": "Forget passphrase",
     "@identityDeleteStoredPassphrase": {
         "description": "Title of the action that deletes only the stored passphrase of the key",
+        "context": "Identities screen, identity details sheet, action"
+    },
+    "identityDeleteKey": "Delete",
+    "@identityDeleteKey": {
+        "description": "Title of the action that deletes the key and its stored passphrase",
         "context": "Identities screen, identity details sheet, action"
     },
     "identityBackupExported": "Backup exported.",
@@ -606,11 +586,6 @@
         "description": "Snackbar message shown when removing the stored passphrase of the key failed",
         "context": "Identities screen, identity details sheet, snackbar"
     },
-    "identityUpdatePublicKey": "Update public key",
-    "@identityUpdatePublicKey": {
-        "description": "Title of the action that fetches the latest version of the public key from online sources",
-        "context": "Identities screen, identity details sheet, action"
-    },
     "identityUpdateKey": "Update key",
     "@identityUpdateKey": {
         "description": "Title of the action that fetches the latest version of a contact's key from online sources",
@@ -642,20 +617,120 @@
         "description": "Title of the setting that selects which HKP key servers are used to search for public keys",
         "context": "Settings screen, key server option"
     },
+    "settingsBetaFeatures": "Beta features",
+    "@settingsBetaFeatures": {
+        "description": "Title of the switch that opts in to beta features",
+        "context": "Settings screen, key server section"
+    },
+    "settingsBetaFeaturesDescription": "Opt-in to upcoming features whenever they become available.",
+    "@settingsBetaFeaturesDescription": {
+        "description": "Subtitle of the switch that opts in to beta features",
+        "context": "Settings screen, key server section"
+    },
     "settingsMiscellaneous": "Miscellaneous",
     "@settingsMiscellaneous": {
         "description": "Headline of the settings section containing assorted options",
         "context": "Settings screen, section headline"
     },
-    "settingsDeleteStoredPassphrases": "Delete stored passphrases",
-    "@settingsDeleteStoredPassphrases": {
-        "description": "Title of the option that deletes all passphrases the app has stored",
+    "settingsClearSelectedIdentity": "Clear selected identity",
+    "@settingsClearSelectedIdentity": {
+        "description": "Title of the option that forgets the currently selected identity",
+        "context": "Settings screen, clear selected identity section"
+    },
+    "settingsClearSelectedIdentityDescription": "Forgets the current selection for an identity. This does not delete the identity itself.",
+    "@settingsClearSelectedIdentityDescription": {
+        "description": "Subtitle of the option that forgets the currently selected identity, clarifying that the identity is not deleted",
+        "context": "Settings screen, clear selected identity section"
+    },
+    "settingsClearSelectedIdentitySuccess": "Cleared selected identity.",
+    "@settingsClearSelectedIdentitySuccess": {
+        "description": "Snackbar message shown after the selected identity was cleared",
+        "context": "Settings screen, clear selected identity section"
+    },
+    "settingsPrivacy": "Privacy",
+    "@settingsPrivacy": {
+        "description": "Title of the option that opens the privacy settings",
         "context": "Settings screen, miscellaneous section"
+    },
+    "settingsEnableTracking": "Enable tracking",
+    "@settingsEnableTracking": {
+        "description": "Title of the switch that enables or disables anonymous usage tracking",
+        "context": "Settings screen, privacy settings"
+    },
+    "settingsEnableTrackingDescription": "Allow the app to track anonymous usage data to improve its services.",
+    "@settingsEnableTrackingDescription": {
+        "description": "Subtitle of the switch that enables or disables anonymous usage tracking",
+        "context": "Settings screen, privacy settings"
     },
     "settingsAboutApp": "About this app",
     "@settingsAboutApp": {
         "description": "Title of the option that opens the about screen",
         "context": "Settings screen, miscellaneous section"
+    },
+    "settingsExporting": "Exporting",
+    "@settingsExporting": {
+        "description": "Title of the option and of the screen that contains the export options",
+        "context": "Settings screen, miscellaneous section and exporting settings screen title"
+    },
+    "settingsExportingDescription": "Importing files back into the app is done on the specific overview pages for contacts and identities respectively.",
+    "@settingsExportingDescription": {
+        "description": "Description explaining where exported files can be imported again",
+        "context": "Settings screen, exporting settings screen description"
+    },
+    "settingsExportAllContacts": "All contacts",
+    "@settingsExportAllContacts": {
+        "description": "Title of the option that exports all contacts to a file",
+        "context": "Settings screen, exporting settings"
+    },
+    "settingsExportAllIdentities": "All identities",
+    "@settingsExportAllIdentities": {
+        "description": "Title of the option that exports all identities including their private keys to a file without protection",
+        "context": "Settings screen, exporting settings"
+    },
+    "settingsExportAllIdentitiesBackup": "All identities as backup",
+    "@settingsExportAllIdentitiesBackup": {
+        "description": "Title of the option that exports all identities as a backup file protected by a backup code",
+        "context": "Settings screen, exporting settings"
+    },
+    "settingsExportInsecureTitle": "Use insecure export?",
+    "@settingsExportInsecureTitle": {
+        "description": "Title of the confirmation dialog warning that exporting all identities without a backup is insecure",
+        "context": "Settings screen, exporting settings, confirmation dialog"
+    },
+    "settingsExportInsecureDescription": "Exporting identities in this way is insecure, as anyone who gains access to the exported file can import all your private OpenPGP keys without your consent.\nUse the ‘Export identities as backup’ option for a safer method.",
+    "@settingsExportInsecureDescription": {
+        "description": "Content of the confirmation dialog warning that exporting all identities without a backup is insecure",
+        "context": "Settings screen, exporting settings, confirmation dialog"
+    },
+    "settingsExportNoContacts": "No contacts to export.",
+    "@settingsExportNoContacts": {
+        "description": "Snackbar message shown when there are no contacts to export",
+        "context": "Settings screen, exporting settings, snackbar"
+    },
+    "settingsExportNoIdentities": "No identities to export.",
+    "@settingsExportNoIdentities": {
+        "description": "Snackbar message shown when there are no identities to export",
+        "context": "Settings screen, exporting settings, snackbar"
+    },
+    "settingsExportContactsSuccess": "Contacts exported successfully.",
+    "@settingsExportContactsSuccess": {
+        "description": "Snackbar message shown when all contacts were exported",
+        "context": "Settings screen, exporting settings, snackbar"
+    },
+    "settingsExportContactsFailed": "Failed to export contacts.",
+    "@settingsExportContactsFailed": {
+        "description": "Snackbar message shown when exporting all contacts failed",
+        "context": "Settings screen, exporting settings, snackbar"
+    },
+    "settingsExportIdentitiesSuccess": "Identities exported successfully.",
+    "@settingsExportIdentitiesSuccess": {
+        "description": "Snackbar message shown when all identities were exported",
+        "context": "Settings screen, exporting settings, snackbar"
+    },
+    "settingsExportIdentitiesFailed": "Failed to export identities.",
+    "@settingsExportIdentitiesFailed": {
+        "description": "Snackbar message shown when exporting all identities failed",
+        "context": "Settings screen, exporting settings, snackbar"
     },
     "appBarUnlockTooltip": "Unlock vault",
     "@appBarUnlockTooltip": {
@@ -671,5 +746,256 @@
     "@appBarSettingsTooltip": {
         "description": "Tooltip of the app bar button that opens the settings",
         "context": "Main screen, app bar action"
+    },
+    "zxcvbnWarningStraightRows": "Straight rows of keys are easy to guess",
+    "@zxcvbnWarningStraightRows": {
+        "description": "Passphrase strength warning for keyboard patterns going in a straight line",
+        "context": "Create identity screen, set passphrase dialog"
+    },
+    "zxcvbnWarningShortKeyboardPatterns": "Short keyboard patterns are easy to guess",
+    "@zxcvbnWarningShortKeyboardPatterns": {
+        "description": "Passphrase strength warning for short keyboard patterns with turns",
+        "context": "Create identity screen, set passphrase dialog"
+    },
+    "zxcvbnWarningRepeatsSingleChar": "Repeats like \"aaa\" are easy to guess",
+    "@zxcvbnWarningRepeatsSingleChar": {
+        "description": "Passphrase strength warning for a single repeated character",
+        "context": "Create identity screen, set passphrase dialog"
+    },
+    "zxcvbnWarningRepeatsMultiChar": "Repeats like \"abcabcabc\" are only slightly harder to guess than \"abc\"",
+    "@zxcvbnWarningRepeatsMultiChar": {
+        "description": "Passphrase strength warning for a repeated group of characters",
+        "context": "Create identity screen, set passphrase dialog"
+    },
+    "zxcvbnWarningSequences": "Sequences like abc or 6543 are easy to guess",
+    "@zxcvbnWarningSequences": {
+        "description": "Passphrase strength warning for character sequences",
+        "context": "Create identity screen, set passphrase dialog"
+    },
+    "zxcvbnWarningRecentYears": "Recent years are easy to guess",
+    "@zxcvbnWarningRecentYears": {
+        "description": "Passphrase strength warning for recent years",
+        "context": "Create identity screen, set passphrase dialog"
+    },
+    "zxcvbnWarningDates": "Dates are often easy to guess",
+    "@zxcvbnWarningDates": {
+        "description": "Passphrase strength warning for dates",
+        "context": "Create identity screen, set passphrase dialog"
+    },
+    "zxcvbnWarningTop10Password": "This is a top-10 common password",
+    "@zxcvbnWarningTop10Password": {
+        "description": "Passphrase strength warning for a password among the 10 most common ones",
+        "context": "Create identity screen, set passphrase dialog"
+    },
+    "zxcvbnWarningTop100Password": "This is a top-100 common password",
+    "@zxcvbnWarningTop100Password": {
+        "description": "Passphrase strength warning for a password among the 100 most common ones",
+        "context": "Create identity screen, set passphrase dialog"
+    },
+    "zxcvbnWarningVeryCommonPassword": "This is a very common password",
+    "@zxcvbnWarningVeryCommonPassword": {
+        "description": "Passphrase strength warning for a very common password",
+        "context": "Create identity screen, set passphrase dialog"
+    },
+    "zxcvbnWarningSimilarToCommonPassword": "This is similar to a commonly used password",
+    "@zxcvbnWarningSimilarToCommonPassword": {
+        "description": "Passphrase strength warning for a password similar to a commonly used one",
+        "context": "Create identity screen, set passphrase dialog"
+    },
+    "zxcvbnWarningWordByItself": "A word by itself is easy to guess",
+    "@zxcvbnWarningWordByItself": {
+        "description": "Passphrase strength warning for a single dictionary word",
+        "context": "Create identity screen, set passphrase dialog"
+    },
+    "zxcvbnWarningNamesByThemselves": "Names and surnames by themselves are easy to guess",
+    "@zxcvbnWarningNamesByThemselves": {
+        "description": "Passphrase strength warning for a passphrase consisting only of a name or surname",
+        "context": "Create identity screen, set passphrase dialog"
+    },
+    "zxcvbnWarningCommonNames": "Common names and surnames are easy to guess",
+    "@zxcvbnWarningCommonNames": {
+        "description": "Passphrase strength warning for common names and surnames used within a passphrase",
+        "context": "Create identity screen, set passphrase dialog"
+    },
+    "createIdentityTitle": "New identity",
+    "@createIdentityTitle": {
+        "description": "Title of the app bar of the screen used to create a new identity",
+        "context": "Create identity screen, app bar"
+    },
+    "createIdentityCreate": "Create",
+    "@createIdentityCreate": {
+        "description": "Button label to create the identity with the entered data",
+        "context": "Create identity screen, app bar action"
+    },
+    "createIdentityCreated": "The identity was created successfully.",
+    "@createIdentityCreated": {
+        "description": "Snackbar message shown after the identity was created successfully",
+        "context": "Create identity screen, snackbar"
+    },
+    "createIdentityHint": "You need to set a passphrase and add at least one User ID to proceed.",
+    "@createIdentityHint": {
+        "description": "Hint explaining which data is required before the identity can be created",
+        "context": "Create identity screen, hint at the top"
+    },
+    "createIdentityPassphraseSet": "Set successfully",
+    "@createIdentityPassphraseSet": {
+        "description": "Subtitle of the passphrase entry shown once a passphrase has been set",
+        "context": "Create identity screen, passphrase entry"
+    },
+    "createIdentityPassphraseDialogTitle": "Set passphrase",
+    "@createIdentityPassphraseDialogTitle": {
+        "description": "Title of the dialog used to enter the passphrase of the new key",
+        "context": "Create identity screen, set passphrase dialog"
+    },
+    "createIdentityPassphraseDialogDescription": "You’ll need it to unlock the key, so every time you use it in PGPtouch.",
+    "@createIdentityPassphraseDialogDescription": {
+        "description": "Description in the dialog used to enter the passphrase of the new key, explaining when the passphrase is needed",
+        "context": "Create identity screen, set passphrase dialog"
+    },
+    "createIdentityPassphraseInsecure": "Insecure passphrase. An attacker would need an average of {guesses} guesses.",
+    "@createIdentityPassphraseInsecure": {
+        "description": "Error shown in the set passphrase dialog when the passphrase is too weak and no specific warning is available",
+        "context": "Create identity screen, set passphrase dialog",
+        "placeholders": {
+            "guesses": {
+                "type": "String",
+                "example": "3 million"
+            }
+        }
+    },
+    "createIdentityExpirationRemoveTooltip": "Remove expiration",
+    "@createIdentityExpirationRemoveTooltip": {
+        "description": "Tooltip of the button that removes the chosen expiration date",
+        "context": "Create identity screen, expiration entry"
+    },
+    "createIdentityUserIdsHeadline": "User IDs",
+    "@createIdentityUserIdsHeadline": {
+        "description": "Headline of the section listing the User IDs (name, comment and email) of the new identity",
+        "context": "Create identity screen, section headline"
+    },
+    "createIdentityUserIdRemoveTooltip": "Remove User ID",
+    "@createIdentityUserIdRemoveTooltip": {
+        "description": "Tooltip of the button that removes a User ID from the new identity",
+        "context": "Create identity screen, User ID entry"
+    },
+    "createIdentityUserIdAdd": "Add User ID",
+    "@createIdentityUserIdAdd": {
+        "description": "Title of the entry that opens the dialog to add a new User ID",
+        "context": "Create identity screen, User ID section"
+    },
+    "createIdentityAdvancedHeadline": "Advanced",
+    "@createIdentityAdvancedHeadline": {
+        "description": "Headline of the foldable section containing advanced options",
+        "context": "Create identity screen, section headline"
+    },
+    "createIdentityAlgorithmTitle": "Algorithm",
+    "@createIdentityAlgorithmTitle": {
+        "description": "Title of the entry showing the selected key algorithm",
+        "context": "Create identity screen, advanced section"
+    },
+    "createIdentityAlgorithmDialogTitle": "Set algorithm",
+    "@createIdentityAlgorithmDialogTitle": {
+        "description": "Title of the dialog used to select the key algorithm",
+        "context": "Create identity screen, algorithm dialog"
+    },
+    "createIdentityAlgorithmRecommendedTooltip": "This is the recommended modern algorithm type.",
+    "@createIdentityAlgorithmRecommendedTooltip": {
+        "description": "Tooltip of the star icon shown next to the recommended algorithm",
+        "context": "Create identity screen, algorithm dialog"
+    },
+    "createIdentityRsaKeySizeTitle": "RSA Key Size",
+    "@createIdentityRsaKeySizeTitle": {
+        "description": "Title of the entry showing the selected RSA key size",
+        "context": "Create identity screen, advanced section"
+    },
+    "createIdentityRsaKeySizeDialogTitle": "Set RSA key size",
+    "@createIdentityRsaKeySizeDialogTitle": {
+        "description": "Title of the dialog used to select the RSA key size",
+        "context": "Create identity screen, RSA key size dialog"
+    },
+    "createIdentityRsaKeySizeNormal": "Normal",
+    "@createIdentityRsaKeySizeNormal": {
+        "description": "Name of the smallest selectable RSA key size (2048 bits)",
+        "context": "Create identity screen, RSA key size entry and dialog"
+    },
+    "createIdentityRsaKeySizeMedium": "Medium",
+    "@createIdentityRsaKeySizeMedium": {
+        "description": "Name of the middle selectable RSA key size (3072 bits)",
+        "context": "Create identity screen, RSA key size entry and dialog"
+    },
+    "createIdentityRsaKeySizeHigh": "High",
+    "@createIdentityRsaKeySizeHigh": {
+        "description": "Name of the largest selectable RSA key size (4096 bits)",
+        "context": "Create identity screen, RSA key size entry and dialog"
+    },
+    "createIdentityAllowKeyEncryptionTitle": "Allow key encryption",
+    "@createIdentityAllowKeyEncryptionTitle": {
+        "description": "Title of the switch that decides whether the key may be used for encryption",
+        "context": "Create identity screen, advanced section"
+    },
+    "createIdentityAllowKeyEncryptionDescription": "If enabled, the key can later be used for encryption after export.",
+    "@createIdentityAllowKeyEncryptionDescription": {
+        "description": "Description of the switch that decides whether the key may be used for encryption",
+        "context": "Create identity screen, advanced section"
+    },
+    "userIdDialogTitleNew": "New User ID",
+    "@userIdDialogTitleNew": {
+        "description": "Title of the dialog used to add a new User ID",
+        "context": "Create identity screen, User ID dialog"
+    },
+    "userIdDialogTitleEdit": "Edit User ID",
+    "@userIdDialogTitleEdit": {
+        "description": "Title of the dialog used to edit an existing User ID",
+        "context": "Create identity screen, User ID dialog"
+    },
+    "userIdNameLabel": "Name",
+    "@userIdNameLabel": {
+        "description": "Label of the name text field of a User ID",
+        "context": "Create identity screen, User ID dialog"
+    },
+    "userIdCommentLabel": "Comment",
+    "@userIdCommentLabel": {
+        "description": "Label of the comment text field of a User ID",
+        "context": "Create identity screen, User ID dialog"
+    },
+    "userIdCommentHint": "At work",
+    "@userIdCommentHint": {
+        "description": "Example comment shown as hint in the comment text field of a User ID",
+        "context": "Create identity screen, User ID dialog"
+    },
+    "userIdEmailLabel": "Email",
+    "@userIdEmailLabel": {
+        "description": "Label of the email text field of a User ID",
+        "context": "Create identity screen, User ID dialog"
+    },
+    "userIdSubmit": "Submit",
+    "@userIdSubmit": {
+        "description": "Button label to confirm the entered User ID",
+        "context": "Create identity screen, User ID dialog"
+    },
+    "userIdEmailEmpty": "Email cannot be empty.",
+    "@userIdEmailEmpty": {
+        "description": "Error shown in the email text field when it is empty",
+        "context": "Create identity screen, User ID dialog error"
+    },
+    "userIdEmailMissingAt": "Email must contain ‘@’.",
+    "@userIdEmailMissingAt": {
+        "description": "Error shown in the email text field when it contains no at sign",
+        "context": "Create identity screen, User ID dialog error"
+    },
+    "userIdEmailTooShort": "Email must be at least 3 characters long.",
+    "@userIdEmailTooShort": {
+        "description": "Error shown in the email text field when it is shorter than 3 characters",
+        "context": "Create identity screen, User ID dialog error"
+    },
+    "userIdCommentInvalidCharacter": "Comment cannot contain ‘)’.",
+    "@userIdCommentInvalidCharacter": {
+        "description": "Error shown in the comment text field when it contains a closing parenthesis",
+        "context": "Create identity screen, User ID dialog error"
+    },
+    "userIdInvalid": "Invalid User ID.",
+    "@userIdInvalid": {
+        "description": "Error shown when the combination of name, comment and email is not a valid User ID",
+        "context": "Create identity screen, User ID dialog error"
     }
 }

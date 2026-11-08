@@ -104,125 +104,101 @@ abstract class AppLocalizations {
   /// **'PGPtouch'**
   String get appTitle;
 
-  /// Headline shown while the transaction is initializing
-  ///
-  /// In en, this message translates to:
-  /// **'Initializing...'**
-  String get contactModeInitializing;
-
-  /// Headline instructing the user to tap the other device
-  ///
-  /// In en, this message translates to:
-  /// **'Tap device'**
-  String get contactModeTapOther;
-
-  /// Headline instructing the user to keep holding the devices together
-  ///
-  /// In en, this message translates to:
-  /// **'Hold...'**
-  String get contactModeHoldOther;
-
-  /// Headline shown when the transaction finished successfully
-  ///
-  /// In en, this message translates to:
-  /// **'Success!'**
-  String get transactionSuccess;
-
-  /// Headline shown when the transaction did not finish successfully
-  ///
-  /// In en, this message translates to:
-  /// **'Failure'**
-  String get transactionFailure;
-
   /// Fallback shown when a value is not known
   ///
   /// In en, this message translates to:
   /// **'Unknown'**
   String get unknown;
 
-  /// Label showing the role of this device in the transaction
+  /// Label showing the role of this device in the run
   ///
   /// In en, this message translates to:
   /// **'Device Role: {role}'**
   String deviceRole(String role);
 
-  /// Label showing the result of the transaction
-  ///
-  /// In en, this message translates to:
-  /// **'Result: {result}'**
-  String transactionResult(String result);
-
-  /// Label showing the error mode of a failed transaction
+  /// Label showing the error mode of a failed run
   ///
   /// In en, this message translates to:
   /// **'Error: {error}'**
-  String transactionError(String error);
+  String runError(String error);
 
-  /// Label showing the failure mode of a failed transaction
+  /// Label showing the failure mode of a failed run
   ///
   /// In en, this message translates to:
   /// **'Failure: {reason}'**
-  String transactionFailureReason(String reason);
+  String runFailureReason(String reason);
 
-  /// Additional details about a failed transaction, shown in parentheses
+  /// Additional details about a failed run, shown in parentheses
   ///
   /// In en, this message translates to:
   /// **'({info})'**
-  String transactionAdditionalInfo(String info);
+  String runAdditionalInfo(String info);
 
-  /// Fallback shown when a failed transaction has no additional details
+  /// Fallback shown when a failed run has no additional details
   ///
   /// In en, this message translates to:
   /// **'No details'**
   String get noDetails;
 
-  /// Button label to stop the current transaction
+  /// Button label and tooltip to stop the current run
   ///
   /// In en, this message translates to:
-  /// **'Stop transaction'**
-  String get stopTransaction;
+  /// **'Stop run'**
+  String get stopRun;
 
-  /// Button label to restart the transaction
+  /// Tooltip of the button that dismisses a finished run
   ///
   /// In en, this message translates to:
-  /// **'Restart transaction'**
-  String get restartTransaction;
+  /// **'Discard run'**
+  String get discardRun;
 
-  /// Button label to request the required Bluetooth or location permissions
+  /// Button label to start a new run after the previous one finished
   ///
   /// In en, this message translates to:
-  /// **'Grant permissions'**
-  String get grantPermissions;
+  /// **'New run'**
+  String get newRun;
 
-  /// Button label to open the system settings to turn on NFC
+  /// Label of the large start button in its idle state
   ///
   /// In en, this message translates to:
-  /// **'Enable NFC'**
-  String get enableNfc;
+  /// **'Go!'**
+  String get goButton;
 
-  /// Button label to open the system settings to turn on Bluetooth
+  /// Placeholder label shown in the identity selector when no identity is selected
   ///
   /// In en, this message translates to:
-  /// **'Enable Bluetooth'**
-  String get enableBluetooth;
+  /// **'Select an Identity'**
+  String get selectIdentity;
 
-  /// Button label to start a transaction
+  /// Message shown inside the start button when the device has no NFC hardware
   ///
   /// In en, this message translates to:
-  /// **'Start transaction'**
-  String get startTransaction;
+  /// **'NFC seems to not be available on this device, but required for PGPtouch to work properly.'**
+  String get nfcUnavailableHint;
 
-  /// Message shown when the device has no NFC hardware
+  /// Message shown inside the start button when the device has no Bluetooth hardware
   ///
   /// In en, this message translates to:
-  /// **'NFC is not available on this device.'**
-  String get nfcNotAvailable;
+  /// **'Bluetooth seems to not be available on this device, but required for PGPtouch to work properly.'**
+  String get bluetoothUnavailableHint;
 
-  /// Message shown when the device has no Bluetooth hardware
+  /// Message shown inside the start button when required permissions are still missing; tapping it requests them
   ///
   /// In en, this message translates to:
-  /// **'Bluetooth is not available on this device.'**
-  String get bluetoothNotAvailable;
+  /// **'There are still device permissions you need to grant for PGPtouch to work properly. Click here to do so.'**
+  String get permissionsRequiredHint;
+
+  /// Message shown inside the start button when NFC is turned off; tapping it opens the system settings
+  ///
+  /// In en, this message translates to:
+  /// **'NFC is not enabled, but required for PGPtouch to work properly. Click here to enable it.'**
+  String get nfcDisabledHint;
+
+  /// Message shown inside the start button when Bluetooth is turned off; tapping it opens the system settings
+  ///
+  /// In en, this message translates to:
+  /// **'Bluetooth is not enabled, but required for PGPtouch to work properly. Click here to enable it.'**
+  String get bluetoothDisabledHint;
 
   /// Label of the navigation bar destination for the contacts list
   ///
@@ -638,6 +614,12 @@ abstract class AppLocalizations {
   /// **'Key strength'**
   String get identityKeyStrength;
 
+  /// Title of the entry showing the algorithm of the key
+  ///
+  /// In en, this message translates to:
+  /// **'Key algorithm'**
+  String get identityKeyAlgorithm;
+
   /// Title of the entry showing the OpenPGP version of the key
   ///
   /// In en, this message translates to:
@@ -704,17 +686,17 @@ abstract class AppLocalizations {
   /// **'Export as backup'**
   String get identityExportBackup;
 
-  /// Title of the action that deletes the key and its stored passphrase
-  ///
-  /// In en, this message translates to:
-  /// **'Delete key'**
-  String get identityDeleteKey;
-
   /// Title of the action that deletes only the stored passphrase of the key
   ///
   /// In en, this message translates to:
-  /// **'Delete stored passphrase'**
+  /// **'Forget passphrase'**
   String get identityDeleteStoredPassphrase;
+
+  /// Title of the action that deletes the key and its stored passphrase
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get identityDeleteKey;
 
   /// Snackbar message shown after the key backup was saved successfully
   ///
@@ -764,12 +746,6 @@ abstract class AppLocalizations {
   /// **'Failed to remove stored passphrase.'**
   String get identityStoredPassphraseRemoveFailed;
 
-  /// Title of the action that fetches the latest version of the public key from online sources
-  ///
-  /// In en, this message translates to:
-  /// **'Update public key'**
-  String get identityUpdatePublicKey;
-
   /// Title of the action that fetches the latest version of a contact's key from online sources
   ///
   /// In en, this message translates to:
@@ -800,23 +776,143 @@ abstract class AppLocalizations {
   /// **'HKP key servers'**
   String get settingsHkpKeyServers;
 
+  /// Title of the switch that opts in to beta features
+  ///
+  /// In en, this message translates to:
+  /// **'Beta features'**
+  String get settingsBetaFeatures;
+
+  /// Subtitle of the switch that opts in to beta features
+  ///
+  /// In en, this message translates to:
+  /// **'Opt-in to upcoming features whenever they become available.'**
+  String get settingsBetaFeaturesDescription;
+
   /// Headline of the settings section containing assorted options
   ///
   /// In en, this message translates to:
   /// **'Miscellaneous'**
   String get settingsMiscellaneous;
 
-  /// Title of the option that deletes all passphrases the app has stored
+  /// Title of the option that forgets the currently selected identity
   ///
   /// In en, this message translates to:
-  /// **'Delete stored passphrases'**
-  String get settingsDeleteStoredPassphrases;
+  /// **'Clear selected identity'**
+  String get settingsClearSelectedIdentity;
+
+  /// Subtitle of the option that forgets the currently selected identity, clarifying that the identity is not deleted
+  ///
+  /// In en, this message translates to:
+  /// **'Forgets the current selection for an identity. This does not delete the identity itself.'**
+  String get settingsClearSelectedIdentityDescription;
+
+  /// Snackbar message shown after the selected identity was cleared
+  ///
+  /// In en, this message translates to:
+  /// **'Cleared selected identity.'**
+  String get settingsClearSelectedIdentitySuccess;
+
+  /// Title of the option that opens the privacy settings
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy'**
+  String get settingsPrivacy;
+
+  /// Title of the switch that enables or disables anonymous usage tracking
+  ///
+  /// In en, this message translates to:
+  /// **'Enable tracking'**
+  String get settingsEnableTracking;
+
+  /// Subtitle of the switch that enables or disables anonymous usage tracking
+  ///
+  /// In en, this message translates to:
+  /// **'Allow the app to track anonymous usage data to improve its services.'**
+  String get settingsEnableTrackingDescription;
 
   /// Title of the option that opens the about screen
   ///
   /// In en, this message translates to:
   /// **'About this app'**
   String get settingsAboutApp;
+
+  /// Title of the option and of the screen that contains the export options
+  ///
+  /// In en, this message translates to:
+  /// **'Exporting'**
+  String get settingsExporting;
+
+  /// Description explaining where exported files can be imported again
+  ///
+  /// In en, this message translates to:
+  /// **'Importing files back into the app is done on the specific overview pages for contacts and identities respectively.'**
+  String get settingsExportingDescription;
+
+  /// Title of the option that exports all contacts to a file
+  ///
+  /// In en, this message translates to:
+  /// **'All contacts'**
+  String get settingsExportAllContacts;
+
+  /// Title of the option that exports all identities including their private keys to a file without protection
+  ///
+  /// In en, this message translates to:
+  /// **'All identities'**
+  String get settingsExportAllIdentities;
+
+  /// Title of the option that exports all identities as a backup file protected by a backup code
+  ///
+  /// In en, this message translates to:
+  /// **'All identities as backup'**
+  String get settingsExportAllIdentitiesBackup;
+
+  /// Title of the confirmation dialog warning that exporting all identities without a backup is insecure
+  ///
+  /// In en, this message translates to:
+  /// **'Use insecure export?'**
+  String get settingsExportInsecureTitle;
+
+  /// Content of the confirmation dialog warning that exporting all identities without a backup is insecure
+  ///
+  /// In en, this message translates to:
+  /// **'Exporting identities in this way is insecure, as anyone who gains access to the exported file can import all your private OpenPGP keys without your consent.\nUse the ‘Export identities as backup’ option for a safer method.'**
+  String get settingsExportInsecureDescription;
+
+  /// Snackbar message shown when there are no contacts to export
+  ///
+  /// In en, this message translates to:
+  /// **'No contacts to export.'**
+  String get settingsExportNoContacts;
+
+  /// Snackbar message shown when there are no identities to export
+  ///
+  /// In en, this message translates to:
+  /// **'No identities to export.'**
+  String get settingsExportNoIdentities;
+
+  /// Snackbar message shown when all contacts were exported
+  ///
+  /// In en, this message translates to:
+  /// **'Contacts exported successfully.'**
+  String get settingsExportContactsSuccess;
+
+  /// Snackbar message shown when exporting all contacts failed
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to export contacts.'**
+  String get settingsExportContactsFailed;
+
+  /// Snackbar message shown when all identities were exported
+  ///
+  /// In en, this message translates to:
+  /// **'Identities exported successfully.'**
+  String get settingsExportIdentitiesSuccess;
+
+  /// Snackbar message shown when exporting all identities failed
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to export identities.'**
+  String get settingsExportIdentitiesFailed;
 
   /// Tooltip of the app bar button that unlocks the vault while it is locked
   ///
@@ -835,6 +931,300 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Settings'**
   String get appBarSettingsTooltip;
+
+  /// Passphrase strength warning for keyboard patterns going in a straight line
+  ///
+  /// In en, this message translates to:
+  /// **'Straight rows of keys are easy to guess'**
+  String get zxcvbnWarningStraightRows;
+
+  /// Passphrase strength warning for short keyboard patterns with turns
+  ///
+  /// In en, this message translates to:
+  /// **'Short keyboard patterns are easy to guess'**
+  String get zxcvbnWarningShortKeyboardPatterns;
+
+  /// Passphrase strength warning for a single repeated character
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats like \"aaa\" are easy to guess'**
+  String get zxcvbnWarningRepeatsSingleChar;
+
+  /// Passphrase strength warning for a repeated group of characters
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats like \"abcabcabc\" are only slightly harder to guess than \"abc\"'**
+  String get zxcvbnWarningRepeatsMultiChar;
+
+  /// Passphrase strength warning for character sequences
+  ///
+  /// In en, this message translates to:
+  /// **'Sequences like abc or 6543 are easy to guess'**
+  String get zxcvbnWarningSequences;
+
+  /// Passphrase strength warning for recent years
+  ///
+  /// In en, this message translates to:
+  /// **'Recent years are easy to guess'**
+  String get zxcvbnWarningRecentYears;
+
+  /// Passphrase strength warning for dates
+  ///
+  /// In en, this message translates to:
+  /// **'Dates are often easy to guess'**
+  String get zxcvbnWarningDates;
+
+  /// Passphrase strength warning for a password among the 10 most common ones
+  ///
+  /// In en, this message translates to:
+  /// **'This is a top-10 common password'**
+  String get zxcvbnWarningTop10Password;
+
+  /// Passphrase strength warning for a password among the 100 most common ones
+  ///
+  /// In en, this message translates to:
+  /// **'This is a top-100 common password'**
+  String get zxcvbnWarningTop100Password;
+
+  /// Passphrase strength warning for a very common password
+  ///
+  /// In en, this message translates to:
+  /// **'This is a very common password'**
+  String get zxcvbnWarningVeryCommonPassword;
+
+  /// Passphrase strength warning for a password similar to a commonly used one
+  ///
+  /// In en, this message translates to:
+  /// **'This is similar to a commonly used password'**
+  String get zxcvbnWarningSimilarToCommonPassword;
+
+  /// Passphrase strength warning for a single dictionary word
+  ///
+  /// In en, this message translates to:
+  /// **'A word by itself is easy to guess'**
+  String get zxcvbnWarningWordByItself;
+
+  /// Passphrase strength warning for a passphrase consisting only of a name or surname
+  ///
+  /// In en, this message translates to:
+  /// **'Names and surnames by themselves are easy to guess'**
+  String get zxcvbnWarningNamesByThemselves;
+
+  /// Passphrase strength warning for common names and surnames used within a passphrase
+  ///
+  /// In en, this message translates to:
+  /// **'Common names and surnames are easy to guess'**
+  String get zxcvbnWarningCommonNames;
+
+  /// Title of the app bar of the screen used to create a new identity
+  ///
+  /// In en, this message translates to:
+  /// **'New identity'**
+  String get createIdentityTitle;
+
+  /// Button label to create the identity with the entered data
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get createIdentityCreate;
+
+  /// Snackbar message shown after the identity was created successfully
+  ///
+  /// In en, this message translates to:
+  /// **'The identity was created successfully.'**
+  String get createIdentityCreated;
+
+  /// Hint explaining which data is required before the identity can be created
+  ///
+  /// In en, this message translates to:
+  /// **'You need to set a passphrase and add at least one User ID to proceed.'**
+  String get createIdentityHint;
+
+  /// Subtitle of the passphrase entry shown once a passphrase has been set
+  ///
+  /// In en, this message translates to:
+  /// **'Set successfully'**
+  String get createIdentityPassphraseSet;
+
+  /// Title of the dialog used to enter the passphrase of the new key
+  ///
+  /// In en, this message translates to:
+  /// **'Set passphrase'**
+  String get createIdentityPassphraseDialogTitle;
+
+  /// Description in the dialog used to enter the passphrase of the new key, explaining when the passphrase is needed
+  ///
+  /// In en, this message translates to:
+  /// **'You’ll need it to unlock the key, so every time you use it in PGPtouch.'**
+  String get createIdentityPassphraseDialogDescription;
+
+  /// Error shown in the set passphrase dialog when the passphrase is too weak and no specific warning is available
+  ///
+  /// In en, this message translates to:
+  /// **'Insecure passphrase. An attacker would need an average of {guesses} guesses.'**
+  String createIdentityPassphraseInsecure(String guesses);
+
+  /// Tooltip of the button that removes the chosen expiration date
+  ///
+  /// In en, this message translates to:
+  /// **'Remove expiration'**
+  String get createIdentityExpirationRemoveTooltip;
+
+  /// Headline of the section listing the User IDs (name, comment and email) of the new identity
+  ///
+  /// In en, this message translates to:
+  /// **'User IDs'**
+  String get createIdentityUserIdsHeadline;
+
+  /// Tooltip of the button that removes a User ID from the new identity
+  ///
+  /// In en, this message translates to:
+  /// **'Remove User ID'**
+  String get createIdentityUserIdRemoveTooltip;
+
+  /// Title of the entry that opens the dialog to add a new User ID
+  ///
+  /// In en, this message translates to:
+  /// **'Add User ID'**
+  String get createIdentityUserIdAdd;
+
+  /// Headline of the foldable section containing advanced options
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced'**
+  String get createIdentityAdvancedHeadline;
+
+  /// Title of the entry showing the selected key algorithm
+  ///
+  /// In en, this message translates to:
+  /// **'Algorithm'**
+  String get createIdentityAlgorithmTitle;
+
+  /// Title of the dialog used to select the key algorithm
+  ///
+  /// In en, this message translates to:
+  /// **'Set algorithm'**
+  String get createIdentityAlgorithmDialogTitle;
+
+  /// Tooltip of the star icon shown next to the recommended algorithm
+  ///
+  /// In en, this message translates to:
+  /// **'This is the recommended modern algorithm type.'**
+  String get createIdentityAlgorithmRecommendedTooltip;
+
+  /// Title of the entry showing the selected RSA key size
+  ///
+  /// In en, this message translates to:
+  /// **'RSA Key Size'**
+  String get createIdentityRsaKeySizeTitle;
+
+  /// Title of the dialog used to select the RSA key size
+  ///
+  /// In en, this message translates to:
+  /// **'Set RSA key size'**
+  String get createIdentityRsaKeySizeDialogTitle;
+
+  /// Name of the smallest selectable RSA key size (2048 bits)
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get createIdentityRsaKeySizeNormal;
+
+  /// Name of the middle selectable RSA key size (3072 bits)
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get createIdentityRsaKeySizeMedium;
+
+  /// Name of the largest selectable RSA key size (4096 bits)
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get createIdentityRsaKeySizeHigh;
+
+  /// Title of the switch that decides whether the key may be used for encryption
+  ///
+  /// In en, this message translates to:
+  /// **'Allow key encryption'**
+  String get createIdentityAllowKeyEncryptionTitle;
+
+  /// Description of the switch that decides whether the key may be used for encryption
+  ///
+  /// In en, this message translates to:
+  /// **'If enabled, the key can later be used for encryption after export.'**
+  String get createIdentityAllowKeyEncryptionDescription;
+
+  /// Title of the dialog used to add a new User ID
+  ///
+  /// In en, this message translates to:
+  /// **'New User ID'**
+  String get userIdDialogTitleNew;
+
+  /// Title of the dialog used to edit an existing User ID
+  ///
+  /// In en, this message translates to:
+  /// **'Edit User ID'**
+  String get userIdDialogTitleEdit;
+
+  /// Label of the name text field of a User ID
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get userIdNameLabel;
+
+  /// Label of the comment text field of a User ID
+  ///
+  /// In en, this message translates to:
+  /// **'Comment'**
+  String get userIdCommentLabel;
+
+  /// Example comment shown as hint in the comment text field of a User ID
+  ///
+  /// In en, this message translates to:
+  /// **'At work'**
+  String get userIdCommentHint;
+
+  /// Label of the email text field of a User ID
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get userIdEmailLabel;
+
+  /// Button label to confirm the entered User ID
+  ///
+  /// In en, this message translates to:
+  /// **'Submit'**
+  String get userIdSubmit;
+
+  /// Error shown in the email text field when it is empty
+  ///
+  /// In en, this message translates to:
+  /// **'Email cannot be empty.'**
+  String get userIdEmailEmpty;
+
+  /// Error shown in the email text field when it contains no at sign
+  ///
+  /// In en, this message translates to:
+  /// **'Email must contain ‘@’.'**
+  String get userIdEmailMissingAt;
+
+  /// Error shown in the email text field when it is shorter than 3 characters
+  ///
+  /// In en, this message translates to:
+  /// **'Email must be at least 3 characters long.'**
+  String get userIdEmailTooShort;
+
+  /// Error shown in the comment text field when it contains a closing parenthesis
+  ///
+  /// In en, this message translates to:
+  /// **'Comment cannot contain ‘)’.'**
+  String get userIdCommentInvalidCharacter;
+
+  /// Error shown when the combination of name, comment and email is not a valid User ID
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid User ID.'**
+  String get userIdInvalid;
 }
 
 class _AppLocalizationsDelegate

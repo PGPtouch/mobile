@@ -1,25 +1,33 @@
+import 'package:aptabase_flutter/aptabase_flutter.dart';
 import 'package:dart_pg/dart_pg.dart';
+import 'package:envied/envied.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:hyphenatorx/hyphenatorx.dart';
-import 'package:material_helper/material_helper.dart';
 import 'package:material_graphics/material_graphics.dart';
+import 'package:material_helper/material_helper.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:mobile/components/add_contact_flow.dart';
-import 'package:mobile/components/add_identity_flow.dart';
-import 'package:mobile/components/step_by_step_guide_dialog.dart';
-import 'package:mobile/components/two_state_widget.dart';
-import 'package:mobile/database/contact_store.dart';
-import 'package:mobile/database/key_store.dart';
-import 'package:mobile/key_utils.dart';
-import 'package:mobile/l10n/app_localizations.dart';
-import 'package:mobile/screens/screen_identities.dart';
-import 'package:mobile/screens/settings.dart';
 import 'package:shared/shared.dart';
 
+import 'components/add_contact_flow.dart';
+import 'components/add_identity_flow.dart';
+import 'components/feature_flags.dart';
+import 'components/identity_tile.dart';
 import 'components/protocol_manager_builder.dart';
 import 'components/protocol_permission_builder.dart';
+import 'components/research_point.dart';
+import 'components/step_by_step_guide_dialog.dart';
+import 'components/two_state_widget.dart';
+import 'database/contact_store.dart';
+import 'database/key_store.dart';
+import 'key_utils.dart';
+import 'l10n/app_localizations.dart';
 import 'screens/screen_contacts.dart';
+import 'screens/screen_identities.dart';
 import 'screens/screen_run.dart';
+import 'screens/settings.dart';
+
+part 'main.g.dart';
 
 Hyphenator? hyphenator;
 String? hyphenatorLanguage;
@@ -29,9 +37,30 @@ String hyphenate(String text) {
   return hyphenator!.hyphenateText(text);
 }
 
+@Envied(obfuscate: true, allowOptionalFields: true)
+abstract class Env {
+  @EnviedField(varName: "FLAGS_BASE")
+  static final String? flagsBase = _Env.flagsBase;
+
+  @EnviedField(varName: "TRACK_BASE")
+  static final String? trackBase = _Env.trackBase;
+
+  @EnviedField(varName: "TRACK_KEY")
+  static final String? trackKey = _Env.trackKey;
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Preferences.init();
+
+  if (Env.trackKey != null && Env.trackBase != null) {
+    await Aptabase.init(Env.trackKey!, InitOptions(host: Env.trackBase!));
+  }
+
+  await FeatureFlags.setup();
+  await FeatureFlagsFixedCache.createInstance();
+  ResearchPoint.trackEvent("initialized");
+
   materialAppsFallbackColor = Colors.teal;
   runApp(const MainApp());
 }
@@ -63,6 +92,9 @@ class _MainAppState extends State<MainApp> {
         Hyphenator.loadAsyncByAbbr(resolvedLang).then((value) {
           hyphenatorLanguage = resolvedLang;
           hyphenator = value;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() {});
+          });
         });
       }
 
@@ -97,7 +129,7 @@ class _MainScreenState extends State<MainScreen>
 
   int? _selectedKey;
   String? _selectedKeyUserIdDisplay;
-  String? _selectedKeyFingerprint;
+  DateTime? _selectedKeyExpiration;
 
   @override
   void initState() {
@@ -111,7 +143,22 @@ class _MainScreenState extends State<MainScreen>
 
     _selectedKey = prefs!.getInt("selectedKey");
     _selectedKeyUserIdDisplay = prefs!.getString("selectedKeyUserId");
-    _selectedKeyFingerprint = prefs!.getString("selectedKeyFingerprint");
+    _selectedKeyExpiration = prefs!.getInt("selectedKeyExpiration") != null
+        ? DateTime.fromMillisecondsSinceEpoch(
+            prefs!.getInt("selectedKeyExpiration")!,
+            isUtc: true,
+          )
+        : null;
+
+    if (_selectedKeyExpiration != null &&
+        _selectedKeyExpiration!.isBefore(DateTime.timestamp())) {
+      _selectedKey = null;
+      _selectedKeyUserIdDisplay = null;
+      _selectedKeyExpiration = null;
+      prefs!.remove("selectedKey");
+      prefs!.remove("selectedKeyUserId");
+      prefs!.remove("selectedKeyExpiration");
+    }
   }
 
   @override
@@ -145,7 +192,7 @@ class _MainScreenState extends State<MainScreen>
         },
         builder: (protocol) {
           final contactMode = protocol.displayState?.lastEvent?.contactMode;
-          final result = protocol.displayState?.lastEvent?.result;
+          // final result = protocol.displayState?.lastEvent?.result;
 
           final contactsBody = ScreenContacts();
           final runBody = ScreenRun(
@@ -153,16 +200,118 @@ class _MainScreenState extends State<MainScreen>
             protocol: protocol,
             selectedKey: _selectedKey,
             selectedKeyUserIdDisplay: _selectedKeyUserIdDisplay,
-            selectedKeyFingerprint: _selectedKeyFingerprint,
+            selectedKeyExpiration: _selectedKeyExpiration,
+            onSelectIdentityRequest: () {
+              _currentPage = 2;
+              if (mounted) setState(() {});
+              _pageController.animateToPage(
+                _currentPage,
+                duration: ExpressiveCurves.expressiveSpatial.normalDuration,
+                curve: ExpressiveCurves.expressiveSpatial.normal,
+              );
+            },
+            onSelectedIdentityDetailsRequest: () async {
+              assert(_selectedKey != null, "Selected key must not be null");
+              await KeyStoreHandler.instance.unlock(
+                AppLocalizations.of(context),
+              );
+              final keyStore = KeyStoreHandler.instance.keyStore!;
+
+              final key = await (keyStore.select(
+                keyStore.keys,
+              )..where((key) => key.id.equals(_selectedKey!))).getSingle();
+              final passphraseIsStored = await KeyStoreHandler.instance
+                  .hasKeyPassphrase(key.fingerprint);
+
+              final userIds = (await key.getUserIds(keyStore))
+                  .toInterchangeable();
+              final users = userIds
+                  .map((user) => IdentityTileUserIdChip(user: user))
+                  .toList();
+
+              final revocationReason = ValueNotifier<KeyRevocationReason?>(
+                null,
+              );
+              IdentityContactInterchangeableHandler(key)
+                  .revocationReason()
+                  .then((value) => revocationReason.value = value);
+
+              final parsedKey = ValueNotifier<PublicKey?>(null);
+              compute(
+                publicKeyFromBytes,
+                key.publicData,
+              ).then((value) => parsedKey.value = value);
+
+              if (!context.mounted) return;
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                clipBehavior: Clip.antiAlias,
+                builder: (context) => IdentityDetailScreen(
+                  users: users,
+                  userIds: userIds,
+                  parsedKey: parsedKey,
+                  keyData: .new(key),
+                  passphraseIsStored: passphraseIsStored,
+                  isExpired:
+                      key.expiresAt != null &&
+                      key.expiresAt!.isBefore(DateTime.now()),
+                  isRevoked: key.isRevoked,
+                  revocationReason: revocationReason,
+                  onUpdate: () {
+                    if (parsedKey.value == null) return;
+
+                    final display = userIds
+                        .map(
+                          (u) => UserId(
+                            name: u.name,
+                            comment: u.comment,
+                            email: u.email,
+                          ).toString(),
+                        )
+                        .join(",");
+
+                    _selectedKeyUserIdDisplay = display;
+                    _selectedKeyExpiration = key.expiresAt?.toUtc();
+                    prefs!.setString("selectedKeyUserId", display);
+                    if (key.expiresAt != null) {
+                      prefs!.setInt(
+                        "selectedKeyExpiration",
+                        key.expiresAt!.toUtc().millisecondsSinceEpoch,
+                      );
+                    } else {
+                      prefs!.remove("selectedKeyExpiration");
+                    }
+                  },
+                  onDeleted: () {
+                    _selectedKey = null;
+                    _selectedKeyUserIdDisplay = null;
+                    prefs!.remove("selectedKey");
+                    prefs!.remove("selectedKeyUserId");
+                    prefs!.remove("selectedKeyExpiration");
+                    if (mounted) setState(() {});
+                  },
+                ),
+              );
+            },
           );
           final identitiesBody = ScreenIdentities(
-            onIdentitySelected: (id, display, fingerprint) {
+            onIdentitySelected: (id, display, expiration) {
+              protocol.stop();
+
               _selectedKey = id;
               _selectedKeyUserIdDisplay = display;
-              _selectedKeyFingerprint = fingerprint;
+              _selectedKeyExpiration = expiration?.toUtc();
               prefs!.setInt("selectedKey", id);
               prefs!.setString("selectedKeyUserId", display);
-              prefs!.setString("selectedKeyFingerprint", fingerprint);
+              if (expiration != null) {
+                prefs!.setInt(
+                  "selectedKeyExpiration",
+                  expiration.toUtc().millisecondsSinceEpoch,
+                );
+              } else {
+                prefs!.remove("selectedKeyExpiration");
+              }
 
               _currentPage = 1;
               if (mounted) setState(() {});
@@ -172,14 +321,30 @@ class _MainScreenState extends State<MainScreen>
                 curve: ExpressiveCurves.expressiveSpatial.normal,
               );
             },
+            onIdentityUpdated: (id, display, expiration) {
+              if (_selectedKey == id) {
+                _selectedKeyUserIdDisplay = display;
+                _selectedKeyExpiration = expiration?.toUtc();
+                prefs!.setString("selectedKeyUserId", display);
+                if (expiration != null) {
+                  prefs!.setInt(
+                    "selectedKeyExpiration",
+                    expiration.toUtc().millisecondsSinceEpoch,
+                  );
+                } else {
+                  prefs!.remove("selectedKeyExpiration");
+                }
+              }
+            },
             onIdentityDeleted: (id) {
               if (_selectedKey == id) {
                 _selectedKey = null;
                 _selectedKeyUserIdDisplay = null;
-                _selectedKeyFingerprint = null;
+                _selectedKeyExpiration = null;
                 prefs!.remove("selectedKey");
                 prefs!.remove("selectedKeyUserId");
-                prefs!.remove("selectedKeyFingerprint");
+                prefs!.remove("selectedKeyExpiration");
+                if (mounted) setState(() {});
               }
             },
           );
@@ -248,7 +413,8 @@ class _MainScreenState extends State<MainScreen>
                       final result = await KeyStoreHandler.instance.unlock(
                         appLocalizations,
                       );
-                      if (result == UnlockResult.deviceReauthRequired) {
+                      if (result == UnlockResult.deviceReauthRequired &&
+                          context.mounted) {
                         showKeyStoreReauthRequiredDialog(context);
                       }
                     },
@@ -264,7 +430,23 @@ class _MainScreenState extends State<MainScreen>
                   IconButton(
                     onPressed: () {
                       if (_navigationBlocked) return;
-                      settings(context);
+                      showSettings(
+                        context,
+                        () => _selectedKey != null
+                            ? () {
+                                protocol.stop();
+
+                                _selectedKey = null;
+                                _selectedKeyUserIdDisplay = null;
+                                _selectedKeyExpiration = null;
+                                prefs!.remove("selectedKey");
+                                prefs!.remove("selectedKeyUserId");
+                                prefs!.remove("selectedKeyExpiration");
+
+                                if (mounted) setState(() {});
+                              }
+                            : null,
+                      );
                     },
                     tooltip: AppLocalizations.of(context).appBarSettingsTooltip,
                     icon: Icon(Icons.tune),
@@ -279,10 +461,23 @@ class _MainScreenState extends State<MainScreen>
                         if (_currentPage == 1 || _navigationBlocked) return;
                         switch (_currentPage) {
                           case 0:
+                            final stopwatch = Stopwatch()..start();
                             final keys = await startAddContactFlow(context);
-                            if (keys == null) return;
+                            final flowMs = stopwatch.elapsedMilliseconds;
+                            if (keys == null) {
+                              ResearchPoint.trackEvent("addContactFlow", {
+                                "outcome": "cancelled",
+                                "durationMs": flowMs,
+                              });
+                              return;
+                            }
+                            var added = 0;
+                            var duplicates = 0;
                             for (final keyRaw in keys) {
-                              final key = publicKeyFromBytes(keyRaw);
+                              final key = await compute(
+                                publicKeyFromBytes,
+                                keyRaw,
+                              );
                               if (await (contactStore.select(
                                     contactStore.contacts,
                                   )..where(
@@ -291,12 +486,13 @@ class _MainScreenState extends State<MainScreen>
                                   ))
                                   .get()
                                   .then((value) => value.isNotEmpty)) {
+                                duplicates++;
                                 continue;
                               }
                               contactStore.insertContact(
                                 ContactsCompanion.insert(
                                   fingerprint: key.fingerprint,
-                                  data: encodePublicKey(key, [
+                                  data: encodeKey(key, [
                                     PacketList.decode(keyRaw),
                                   ]),
                                   isRevoked: isPublicKeyDataRevoked(keyRaw),
@@ -307,21 +503,64 @@ class _MainScreenState extends State<MainScreen>
                                 ),
                                 key.users.map((user) => user.userID).toList(),
                               );
+                              added++;
                             }
+                            ResearchPoint.trackEvent("addContactFlow", {
+                              "outcome": added > 0
+                                  ? "added"
+                                  : duplicates > 0
+                                  ? "duplicate"
+                                  : "empty",
+                              "added": added,
+                              "duplicates": duplicates,
+                              "durationMs": flowMs,
+                            });
                           case 2:
-                            final keys = await startAddIdentityFlow(context);
-                            if (keys == null) return;
+                            final stopwatch = Stopwatch()..start();
+                            final flow = await startAddIdentityFlow(context);
+                            final flowMs = stopwatch.elapsedMilliseconds;
+                            final created = flow.created;
+                            if (created != null) {
+                              ResearchPoint.trackEvent("addIdentityFlow", {
+                                "outcome": created
+                                    ? "created"
+                                    : "createCancelled",
+                                "durationMs": flowMs,
+                              });
+                              return;
+                            }
+                            final keys = flow.keys;
+                            if (keys == null) {
+                              ResearchPoint.trackEvent("addIdentityFlow", {
+                                "outcome": "cancelled",
+                                "durationMs": flowMs,
+                              });
+                              return;
+                            }
                             final keyStore = KeyStoreHandler.instance.keyStore;
-                            if (keyStore == null) return;
+                            if (keyStore == null) {
+                              ResearchPoint.trackEvent("addIdentityFlow", {
+                                "outcome": "locked",
+                                "durationMs": flowMs,
+                              });
+                              return;
+                            }
+                            var added = 0;
+                            var duplicates = 0;
+                            var passphrasesStored = 0;
                             for (final (publicKey, privateKey, passphrase)
                                 in keys) {
-                              final key = publicKeyFromBytes(publicKey);
+                              final key = await compute(
+                                publicKeyFromBytes,
+                                publicKey,
+                              );
                               if (await (keyStore.select(keyStore.keys)..where(
                                     (k) =>
                                         k.fingerprint.equals(key.fingerprint),
                                   ))
                                   .get()
                                   .then((value) => value.isNotEmpty)) {
+                                duplicates++;
                                 continue;
                               }
                               await keyStore.insertKey(
@@ -342,8 +581,21 @@ class _MainScreenState extends State<MainScreen>
                                   key.fingerprint,
                                   passphrase,
                                 );
+                                passphrasesStored++;
                               }
+                              added++;
                             }
+                            ResearchPoint.trackEvent("addIdentityFlow", {
+                              "outcome": added > 0
+                                  ? "added"
+                                  : duplicates > 0
+                                  ? "duplicate"
+                                  : "empty",
+                              "added": added,
+                              "duplicates": duplicates,
+                              "passphrasesStored": passphrasesStored,
+                              "durationMs": flowMs,
+                            });
                         }
                       },
                       tooltip: AppLocalizations.of(context).contactsAddTooltip,

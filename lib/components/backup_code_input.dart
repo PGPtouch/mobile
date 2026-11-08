@@ -5,8 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:material_graphics/material_graphics.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:mobile/l10n/app_localizations.dart';
-import 'package:mobile/main.dart';
+
+import '../l10n/app_localizations.dart';
+import '../main.dart';
 
 const String backupCodeCharacters = "123456789ABCDEFGHIJKLMNPQRSTUVWXYZ";
 
@@ -62,6 +63,8 @@ class _BackupCodeInputState extends State<BackupCodeInput> {
 
   String? _error;
   final _errors = <int>{};
+
+  double? charWidth;
 
   final List<TextEditingController> _controllers = List.generate(
     24,
@@ -144,8 +147,8 @@ class _BackupCodeInputState extends State<BackupCodeInput> {
           .where(backupCodeCharacters.contains)
           .join();
 
-      for (int i = 0; i < _controllers.length; i++) {
-        int targetIndex = index + i;
+      for (var i = 0; i < _controllers.length; i++) {
+        final targetIndex = index + i;
         if (targetIndex < _controllers.length && i < cleanText.length) {
           _controllers[targetIndex].text = cleanText[i];
           _focusNodes[targetIndex].requestFocus();
@@ -169,8 +172,9 @@ class _BackupCodeInputState extends State<BackupCodeInput> {
     final colorScheme = ColorScheme.of(context);
     final textTheme = TextTheme.of(context);
 
-    final charWidth = (TextPainter(
-      text: TextSpan(text: "W", style: textTheme.bodyMedium!.googleSansCode),
+    final textFieldStyle = textTheme.bodyMedium!.googleSansCode;
+    charWidth ??= (TextPainter(
+      text: TextSpan(text: "W", style: textFieldStyle),
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),
     )..layout()).width;
@@ -180,11 +184,7 @@ class _BackupCodeInputState extends State<BackupCodeInput> {
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) _cancel();
       },
-      child: Padding(
-        padding:
-            MediaQuery.viewInsetsOf(context) +
-            MediaQuery.paddingOf(context) +
-            const EdgeInsets.all(16).copyWith(top: 14, bottom: 8),
+      child: _BackupCodeInputPadding(
         child: Column(
           mainAxisSize: .min,
           crossAxisAlignment: .center,
@@ -219,92 +219,92 @@ class _BackupCodeInputState extends State<BackupCodeInput> {
                     : [],
               ),
             ),
-            Wrap(
-              children: _styledControllerPairs
-                  .asMap()
-                  .entries
-                  .map(
-                    (controllers) => Row(
-                      mainAxisSize: .min,
-                      children: [
-                        ...controllers.value.asMap().entries.map((controller) {
-                          final fieldIndex =
-                              controllers.key * 4 + controller.key;
-                          final focusNode = _focusNodes[fieldIndex];
-                          return SizedBox(
-                            width: charWidth * 2 + 16,
-                            child: Focus(
-                              onKeyEvent: (node, event) {
-                                if (event is KeyDownEvent &&
-                                    event.logicalKey ==
-                                        LogicalKeyboardKey.backspace &&
-                                    controller.value.text.isEmpty) {
-                                  _focusPrevious(fieldIndex);
-                                  return KeyEventResult.handled;
-                                }
-                                return KeyEventResult.ignored;
-                              },
-                              child: TextField(
-                                controller: controller.value,
-                                focusNode: focusNode,
-                                autofocus:
-                                    controllers.key == 0 && controller.key == 0,
-                                textInputAction: .next,
-                                textCapitalization: .characters,
-                                style: textTheme.bodyMedium!.googleSansCode,
-                                textAlign: .center,
-                                maxLength:
-                                    _controllers.length +
-                                    (_controllers.length - 1) ~/ 4,
-                                maxLengthEnforcement: .none,
-                                buildCounter: (
-                                  _, {
-                                  required currentLength,
-                                  required isFocused,
-                                  required maxLength,
-                                }) => null,
-                                inputFormatters: [
-                                  TextInputFormatter.withFunction((
-                                    oldValue,
-                                    newValue,
-                                  ) {
-                                    if (newValue.text.length > 1 &&
-                                        oldValue.text.isEmpty) {
-                                      return newValue;
-                                    }
-                                    if (newValue.text.length > 1) {
-                                      return TextEditingValue(
-                                        text: newValue.text.substring(
-                                          newValue.text.length - 1,
-                                        ),
-                                        selection:
-                                            const TextSelection.collapsed(
-                                              offset: 1,
-                                            ),
-                                      );
-                                    }
+            RepaintBoundary(
+              child: Wrap(
+                children: _styledControllerPairs.asMap().entries.map((
+                  controllers,
+                ) {
+                  return Row(
+                    mainAxisSize: .min,
+                    children: [
+                      ...controllers.value.asMap().entries.map((controller) {
+                        final fieldIndex = controllers.key * 4 + controller.key;
+                        final focusNode = _focusNodes[fieldIndex];
+                        return SizedBox(
+                          width: charWidth! * 2 + 16,
+                          child: Focus(
+                            onKeyEvent: (node, event) {
+                              if (event is KeyDownEvent &&
+                                  event.logicalKey ==
+                                      LogicalKeyboardKey.backspace &&
+                                  controller.value.text.isEmpty) {
+                                _focusPrevious(fieldIndex);
+                                return KeyEventResult.handled;
+                              }
+                              return KeyEventResult.ignored;
+                            },
+                            child: TextField(
+                              controller: controller.value,
+                              focusNode: focusNode,
+                              autofocus:
+                                  controllers.key == 0 && controller.key == 0,
+                              autocorrect: false,
+                              enableSuggestions: false,
+                              textInputAction: .next,
+                              textCapitalization: .characters,
+                              style: textFieldStyle,
+                              textAlign: .center,
+                              maxLength:
+                                  _controllers.length +
+                                  (_controllers.length - 1) ~/ 4,
+                              maxLengthEnforcement: .none,
+                              buildCounter: (
+                                _, {
+                                required currentLength,
+                                required isFocused,
+                                required maxLength,
+                              }) => null,
+                              inputFormatters: [
+                                TextInputFormatter.withFunction((
+                                  oldValue,
+                                  newValue,
+                                ) {
+                                  if (newValue.text.length > 1 &&
+                                      oldValue.text.isEmpty) {
                                     return newValue;
-                                  }),
-                                ],
-                                onChanged: (value) => _handleChange(
-                                  controllers.key,
-                                  controller.key,
-                                  value,
-                                ),
-                                decoration: InputDecoration(
-                                  error: _errors.contains(fieldIndex)
-                                      ? SizedBox.shrink()
-                                      : null,
-                                ),
+                                  }
+                                  if (newValue.text.length > 1) {
+                                    return TextEditingValue(
+                                      text: newValue.text.substring(
+                                        newValue.text.length - 1,
+                                      ),
+                                      selection: const TextSelection.collapsed(
+                                        offset: 1,
+                                      ),
+                                    );
+                                  }
+                                  return newValue;
+                                }),
+                              ],
+                              onChanged: (value) => _handleChange(
+                                controllers.key,
+                                controller.key,
+                                value,
+                              ),
+                              decoration: InputDecoration(
+                                error: _errors.contains(fieldIndex)
+                                    ? SizedBox.shrink()
+                                    : null,
                               ),
                             ),
-                          );
-                        }),
-                        SizedBox(width: charWidth * 1),
-                      ],
-                    ),
-                  )
-                  .toList(),
+                          ),
+                        );
+                      }),
+                      SizedBox(width: charWidth!),
+                    ],
+                  );
+                }).toList(),
+              ),
             ),
             SizedBox(height: 20),
             Row(
@@ -331,6 +331,20 @@ class _BackupCodeInputState extends State<BackupCodeInput> {
       ),
     );
   }
+}
+
+class _BackupCodeInputPadding extends StatelessWidget {
+  final Widget child;
+  const new({required this.child});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding:
+        MediaQuery.viewInsetsOf(context) +
+        MediaQuery.paddingOf(context) +
+        const EdgeInsets.all(16).copyWith(top: 14, bottom: 8),
+    child: child,
+  );
 }
 
 Future<({String backupCode})?> showBackupCodeInputDialog(

@@ -2,9 +2,10 @@ import 'dart:async';
 
 import 'package:material_helper/material_helper.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:mobile/components/identity_tile.dart';
-import 'package:mobile/database/contact_store.dart';
-import 'package:mobile/l10n/app_localizations.dart';
+
+import '../components/identity_tile.dart';
+import '../database/contact_store.dart';
+import '../l10n/app_localizations.dart';
 
 var contactStore = ContactStore();
 

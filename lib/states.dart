@@ -1,18 +1,18 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:bluetooth_low_energy/bluetooth_low_energy.dart';
+// depended on in package overrides
+// ignore: depend_on_referenced_packages, implementation_imports
+import 'package:bluetooth_low_energy_android/src/api.g.dart'
+    show PeripheralManagerHostApi;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart'
     show AppLifecycleState, WidgetsBinding, WidgetsBindingObserver;
-import 'package:shared/shared.dart';
-
-import 'package:bluetooth_low_energy/bluetooth_low_energy.dart';
-// ignore: implementation_imports
-import 'package:bluetooth_low_energy_android/src/api.g.dart'
-    show PeripheralManagerHostApi;
 import 'package:nfc_util/android.dart' as nfc_android;
 import 'package:nfc_util/nfc_util.dart';
+import 'package:shared/shared.dart';
 
 // MARK: Shared constants
 
@@ -826,6 +826,7 @@ final class NfcSender extends NfcSenderState with _DisposeOnce {
       }
       try {
         emit(NfcSenderEvent.selected());
+        // only for cleanup
         // ignore: avoid_catching_errors
       } on StateError {
         // already disposed

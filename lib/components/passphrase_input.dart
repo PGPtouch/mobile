@@ -4,9 +4,10 @@ import 'package:dart_pg/dart_pg.dart';
 import 'package:flutter/foundation.dart';
 import 'package:material_graphics/material_graphics.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:mobile/l10n/app_localizations.dart';
-import 'package:mobile/main.dart';
-import 'package:mobile/screens/screen_run.dart';
+
+import '../l10n/app_localizations.dart';
+import '../main.dart';
+import '../screens/screen_run.dart';
 
 Uint8List? _decryptPrivateKey((Uint8List, String) args) {
   try {
@@ -149,7 +150,7 @@ class _PassphraseInputState extends State<PassphraseInput> {
                     : Colors.white,
               ),
               child: Text(
-                "${hyphenate(appLocalizations.passphraseInputPrompt)} ${widget.identity.map((e) => appLocalizations.enquote(e)).join(", ")}",
+                "${hyphenate(appLocalizations.passphraseInputPrompt)} ${widget.identity.map(appLocalizations.enquote).join(", ")}",
                 textAlign: .justify,
               ),
             ),
