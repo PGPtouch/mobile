@@ -62,6 +62,9 @@ class _ScreenRunState extends State<ScreenRun> {
               ..enableJittering = false
               ..enableSecondTick = true
               ..enableToNextFull = false
+              ..enableToNextFullImmediate = false
+              ..tapOtherDisplay = false
+              ..holdOtherDisplay = false
               ..errorDisplay = false
               ..resultDisplay = false
               ..warningDisplay = false;
@@ -69,7 +72,10 @@ class _ScreenRunState extends State<ScreenRun> {
             _startButtonState.currentState!
               ..enableJittering = false
               ..enableSecondTick = false
-              ..enableToNextFull = true
+              ..enableToNextFull = false
+              ..enableToNextFullImmediate = true
+              ..tapOtherDisplay = true
+              ..holdOtherDisplay = false
               ..errorDisplay = false
               ..resultDisplay = false
               ..warningDisplay = false;
@@ -78,6 +84,9 @@ class _ScreenRunState extends State<ScreenRun> {
               ..enableJittering = true
               ..enableSecondTick = false
               ..enableToNextFull = false
+              ..enableToNextFullImmediate = false
+              ..tapOtherDisplay = false
+              ..holdOtherDisplay = true
               ..errorDisplay = false
               ..resultDisplay = false
               ..warningDisplay = false;
@@ -86,7 +95,10 @@ class _ScreenRunState extends State<ScreenRun> {
             _startButtonState.currentState!
               ..enableJittering = false
               ..enableSecondTick = false
-              ..enableToNextFull = true
+              ..enableToNextFull = false
+              ..enableToNextFullImmediate = false
+              ..tapOtherDisplay = false
+              ..holdOtherDisplay = false
               ..errorDisplay = !success
               ..resultDisplay = success
               ..warningDisplay = false;
@@ -96,6 +108,9 @@ class _ScreenRunState extends State<ScreenRun> {
           ..enableJittering = false
           ..enableSecondTick = false
           ..enableToNextFull = false
+          ..enableToNextFullImmediate = false
+          ..tapOtherDisplay = false
+          ..holdOtherDisplay = false
           ..errorDisplay = false
           ..resultDisplay = false
           ..warningDisplay = false;
@@ -400,6 +415,7 @@ class _ScreenRunStateButtonState extends State<ScreenRunStateButton> {
   bool _didNextFull = false;
 
   final _validStopValues = [
+    0 / 12,
     1 / 12,
     2 / 12,
     3 / 12,
@@ -415,10 +431,15 @@ class _ScreenRunStateButtonState extends State<ScreenRunStateButton> {
   ];
 
   var enableToNextFull = false;
+  var enableToNextFullImmediate = false;
   var enableJittering = false;
   var enableSecondTick = false;
-  var _turns = 0.0;
 
+  var _turns = 0.0;
+  var _snapImmediately = false;
+
+  var tapOtherDisplay = false;
+  var holdOtherDisplay = false;
   var errorDisplay = false;
   var warningDisplay = false;
   var resultDisplay = false;
@@ -429,8 +450,12 @@ class _ScreenRunStateButtonState extends State<ScreenRunStateButton> {
     _timeBase = Timer.periodic(Duration(milliseconds: 10), (timer) {
       final now = DateTime.now();
 
-      if (!enableToNextFull && _didNextFull) {
+      if (!(enableToNextFull || enableToNextFullImmediate) && _didNextFull) {
         _didNextFull = false;
+        if (mounted) setState(() {});
+      }
+      if (!enableToNextFullImmediate && _snapImmediately) {
+        _snapImmediately = false;
         if (mounted) setState(() {});
       }
       if (!enableJittering && _timeJitterLastDirection != null) {
@@ -439,7 +464,14 @@ class _ScreenRunStateButtonState extends State<ScreenRunStateButton> {
         if (mounted) setState(() {});
       }
 
-      if (enableToNextFull) {
+      if (enableToNextFullImmediate) {
+        if (_didNextFull) return;
+        _didNextFull = true;
+        _turns = _turns.floorToDouble();
+        _snapImmediately = true;
+        if (mounted) setState(() {});
+        return;
+      } else if (enableToNextFull) {
         if (_didNextFull) return;
         _didNextFull = true;
         _turns = _turns.floorToDouble();
@@ -523,13 +555,19 @@ class _ScreenRunStateButtonState extends State<ScreenRunStateButton> {
         aspectRatio: 1 / 1,
         child: TweenAnimationBuilder(
           tween: Tween(begin: _turns, end: _turns),
-          duration: ExpressiveCurves.expressiveEffects.normalDuration,
+          duration: _snapImmediately
+              ? Duration.zero
+              : ExpressiveCurves.expressiveEffects.normalDuration,
           curve: ExpressiveCurves.expressiveEffects.normal,
           builder: (_, turns, child) => TweenAnimationBuilder(
             tween: ShapeBorderTween(
               begin: MaterialShapeBorder(shape: MaterialShapes.cookie12Sided),
               end: MaterialShapeBorder(
-                shape: errorDisplay
+                shape: tapOtherDisplay
+                    ? MaterialShapes.arrow
+                    : holdOtherDisplay
+                    ? MaterialShapes.softBurst
+                    : errorDisplay
                     ? MaterialShapes.pentagon
                     : resultDisplay || warningDisplay
                     ? MaterialShapes.square
@@ -614,9 +652,9 @@ class _ScreenRunStateButtonTapOtherAnimationState
             begin: 0,
             end: 1,
           ).chain(CurveTween(curve: ExpressiveCurves.expressiveEffects.slow)),
-          weight: 1.25,
+          weight: 0.35,
         ),
-        TweenSequenceItem(tween: ConstantTween(1), weight: 5 - (1 + .3 + .2)),
+        TweenSequenceItem(tween: ConstantTween(1), weight: 5 - (.35 + .3 + .2)),
         TweenSequenceItem(
           tween: Tween<double>(
             begin: 1,
@@ -633,9 +671,9 @@ class _ScreenRunStateButtonTapOtherAnimationState
             begin: 1,
             end: 0,
           ).chain(CurveTween(curve: ExpressiveCurves.expressiveSpatial.slow)),
-          weight: .65,
+          weight: 0.65,
         ),
-        TweenSequenceItem(tween: ConstantTween(0), weight: 5 - (.6 + .65)),
+        TweenSequenceItem(tween: ConstantTween(0), weight: 5 - (.35 + .65)),
       ]).evaluate(_controller);
       return Padding(
         padding: const EdgeInsets.all(96),
@@ -644,9 +682,9 @@ class _ScreenRunStateButtonTapOtherAnimationState
           child: Stack(
             children: [
               Transform.rotate(
-                angle: value * (pi / 8),
+                angle: value * (pi / 6),
                 child: Transform.translate(
-                  offset: Offset(value * 58 + 6, value * -32),
+                  offset: Offset(value * 66 + 6, value * -32),
                   child: SvgPicture.asset(
                     "assets/touchAnimation/Phone2.svg",
                     colorMapper: colorMapper,
@@ -654,9 +692,9 @@ class _ScreenRunStateButtonTapOtherAnimationState
                 ),
               ),
               Transform.rotate(
-                angle: -value * (pi / 8),
+                angle: -value * (pi / 6),
                 child: Transform.translate(
-                  offset: Offset(-value * 70 - 6, value * -32),
+                  offset: Offset(-value * 78 - 6, value * -32),
                   child: SvgPicture.asset(
                     "assets/touchAnimation/Phone1.svg",
                     colorMapper: colorMapper,
@@ -697,7 +735,10 @@ class _ScreenRunStateButtonTapOtherAnimationSvgColorMapper extends ColorMapper {
     Color color,
   ) => switch (color) {
     const Color(0xFFFF0000) => primaryContainer,
-    const Color(0xFF00FF00) => primaryContainer.withValues(alpha: 0.6),
+    const Color(0xFF00FF00) => Color.alphaBlend(
+      primaryContainer.withValues(alpha: 0.6),
+      primary,
+    ),
     const Color(0xFF0000FF) => primary,
     _ => color,
   };
