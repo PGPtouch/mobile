@@ -10,6 +10,7 @@ import 'package:material_helper/material_helper.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shared/shared.dart';
 
+import '../components/feature_flags.dart';
 import '../components/identity_tile.dart';
 import '../components/research_point.dart';
 import '../components/snack_bar_manager.dart';
@@ -293,11 +294,58 @@ SettingsConfig settings(
                           appLocalizations.settingsEnableTrackingDescription,
                       value: ResearchPoint.enabled,
                       onChanged: (value) {
+                        if (Env.trackKey == null || Env.trackBase == null) {
+                          prefs?.setBool("researchEnabled", false);
+                          return;
+                        }
                         prefs?.setBool("researchEnabled", value);
                       },
                     ),
                   ],
                 ),
+                SettingsSection(
+                  options: [
+                    CustomSettingsOption(
+                      icon: Icon(Icons.history_edu),
+                      title: appLocalizations.settingsPrivacyPolicy,
+                      onTap: () {
+                        final locale = AppLocalizations.of(context).localeName;
+                        launchUrl(
+                          Uri.parse(
+                            "https://privacy.jhubi1.com/?app=4c2c4490f6164d4db7f399d1c87c18f9&hl=${Uri.encodeQueryComponent(locale)}",
+                          ),
+                          mode: .inAppBrowserView,
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                if (FeatureFlags.client != null)
+                  SettingsSection(
+                    headline: appLocalizations.settingsFeatureRollout,
+                    options: [
+                      CustomSettingsOption(
+                        title: appLocalizations.settingsFlagNumber,
+                        subtitle: FeatureFlags.targetingKey,
+                        onLongPress: () =>
+                            copyDataInt(context, FeatureFlags.targetingKey),
+                      ),
+                      CustomSettingsOption(
+                        icon: Icon(Icons.all_inbox),
+                        title: appLocalizations.settingsOpenClaim,
+                        subtitle: appLocalizations.settingsOpenClaimDescription,
+                        onTap: () {
+                          launchUrl(
+                            Uri.parse(
+                              "https://privacy.jhubi1.com/claim?service=PGPtouch"
+                              "&featureFlagNumber=${Uri.encodeQueryComponent(FeatureFlags.targetingKey)}",
+                            ),
+                            mode: .inAppBrowserView,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
               ],
             ),
           ),

@@ -13,6 +13,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'PGPtouch';
 
   @override
+  String get appTitleVersionSuffix => 'Alpha';
+
+  @override
+  String get appTitleVersionDetailsDialogTitle => 'Alpha version';
+
+  @override
+  String appTitleVersionDetailsDialogDescription(
+    String branch,
+    int version,
+    String commit,
+  ) {
+    return 'This is an alpha version of the PGPtouch mobile implementation.\nIt is not yet feature complete and may contain bugs. Versions may not be cross-compatible, and data may be lost when upgrading to a newer version. Not liable for any loss.\nCode revision: $branch/$version@$commit';
+  }
+
+  @override
   String get unknown => 'Unknown';
 
   @override
@@ -437,6 +452,22 @@ class AppLocalizationsEn extends AppLocalizations {
       'Allow the app to track anonymous usage data to improve its services.';
 
   @override
+  String get settingsPrivacyPolicy => 'Privacy policy';
+
+  @override
+  String get settingsFeatureRollout => 'Feature rollout';
+
+  @override
+  String get settingsFlagNumber => 'Flag number';
+
+  @override
+  String get settingsOpenClaim => 'Open inquiry';
+
+  @override
+  String get settingsOpenClaimDescription =>
+      'If you want to request data insight or deletion, you can open a inquiry.';
+
+  @override
   String get settingsAboutApp => 'About this app';
 
   @override
@@ -617,6 +648,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'If enabled, the key can later be used for encryption after export.';
 
   @override
+  String get discardDialogTitle => 'Discard changes?';
+
+  @override
+  String get discardDialogDescription =>
+      'You have unsaved changes. If you discard them, they will be lost.';
+
+  @override
   String get userIdDialogTitleNew => 'New User ID';
 
   @override
@@ -629,7 +667,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get userIdCommentLabel => 'Comment';
 
   @override
-  String get userIdCommentHint => 'At work';
+  String get userIdCommentHint => 'Work';
+
+  @override
+  String get userIdCommentBrackets => '(<br>)';
 
   @override
   String get userIdEmailLabel => 'Email';

@@ -1,6 +1,7 @@
 import 'package:dart_pg/dart_pg.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
+import 'package:material_graphics/material_graphics.dart';
 import 'package:material_helper/material_helper.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shared/shared.dart';
@@ -186,7 +187,7 @@ class _ScreenCreateIdentityState extends State<ScreenCreateIdentity> {
     final appLocalizations = AppLocalizations.of(context);
     final canCreate = _passphrase != null && _userIds.isNotEmpty;
 
-    return Scaffold(
+    final child = Scaffold(
       body: CustomScrollView(
         slivers: [
           SliverAppBar.large(
@@ -473,7 +474,36 @@ class _ScreenCreateIdentityState extends State<ScreenCreateIdentity> {
         ],
       ),
     );
+
+    final isChanged =
+        _passphrase != null ||
+        _userIds.isNotEmpty ||
+        _expirationDate != null ||
+        _advancedAlgorithm != .curve25519 ||
+        _advancedAllowKeyEncryption != true;
+    return PopScope(
+      canPop: !isChanged,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop || !isChanged) return;
+        final wantPop = await showDiscardDialog(context);
+        if (wantPop && context.mounted) {
+          final navigator = Navigator.of(context);
+          if (navigator.canPop()) navigator.pop();
+        }
+      },
+      child: child,
+    );
   }
+}
+
+Future<bool> showDiscardDialog(BuildContext context) {
+  final appLocalizations = AppLocalizations.of(context);
+  return showConfirmationDialog(
+    context: context,
+    title: appLocalizations.discardDialogTitle,
+    content: Text(appLocalizations.discardDialogDescription),
+    promotedActions: {.negative},
+  );
 }
 
 class _UserIdInputDialog extends StatefulWidget {
@@ -485,6 +515,8 @@ class _UserIdInputDialog extends StatefulWidget {
 }
 
 class _UserIdInputDialogState extends State<_UserIdInputDialog> {
+  var _showCommentField = false;
+
   late final _controllerName = TextEditingController(
     text: widget.initialData?.name,
   );
@@ -549,6 +581,9 @@ class _UserIdInputDialogState extends State<_UserIdInputDialog> {
   @override
   Widget build(BuildContext context) {
     final appLocalizations = AppLocalizations.of(context);
+    final commentBracketsParts = appLocalizations.userIdCommentBrackets.split(
+      "<br>",
+    );
     return ScrollingAlertDialog(
       title: Text(
         widget.initialData != null
@@ -556,10 +591,10 @@ class _UserIdInputDialogState extends State<_UserIdInputDialog> {
             : appLocalizations.userIdDialogTitleNew,
       ),
       content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: .min,
+        child: KeyedAnimatedList(
           children: [
             TextField(
+              key: ValueKey("nameField"),
               controller: _controllerName,
               autofocus: true,
               autocorrect: true,
@@ -572,26 +607,61 @@ class _UserIdInputDialogState extends State<_UserIdInputDialog> {
                 labelText: appLocalizations.userIdNameLabel,
                 hintText: "John Doe",
                 errorText: nameError,
-                suffixIcon: Icon(Icons.record_voice_over),
+                suffixIcon: IconButton(
+                  onPressed: () {
+                    _showCommentField = !_showCommentField;
+                    if (mounted) setState(() {});
+                  },
+                  icon: TweenAnimationBuilder(
+                    tween: Tween(
+                      begin: 0.0,
+                      end: _showCommentField ? 0.5 : 0.0,
+                    ),
+                    duration: ExpressiveCurves.expressiveEffects.normalDuration,
+                    curve: ExpressiveCurves.expressiveEffects.normal,
+                    builder: (_, value, _) => RotationTransition(
+                      turns: AlwaysStoppedAnimation(value),
+                      child: Icon(Icons.expand_more),
+                    ),
+                  ),
+                ),
               ),
             ),
-            SizedBox(height: 16),
-            TextField(
-              controller: _controllerComment,
-              autocorrect: true,
-              keyboardType: TextInputType.text,
-              textCapitalization: .sentences,
-              textInputAction: .next,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: appLocalizations.userIdCommentLabel,
-                hintText: appLocalizations.userIdCommentHint,
-                errorText: commentError,
-                suffixIcon: Icon(Icons.comment),
-              ),
+            TweenAnimationBuilder(
+              key: ValueKey("spacer1"),
+              tween: Tween(begin: 0.0, end: _showCommentField ? 8.0 : 0.0),
+              duration: ExpressiveCurves.expressiveEffects.normalDuration,
+              curve: ExpressiveCurves.expressiveEffects.normal,
+              builder: (_, value, _) => SizedBox(height: value),
             ),
-            SizedBox(height: 16),
+            if (_showCommentField)
+              Column(
+                key: ValueKey("commentField"),
+                mainAxisSize: .min,
+                children: [
+                  TextField(
+                    controller: _controllerComment,
+                    autocorrect: true,
+                    keyboardType: TextInputType.text,
+                    textCapitalization: .sentences,
+                    textInputAction: .next,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      prefixText: commentBracketsParts.first,
+                      suffixText: commentBracketsParts.length > 1
+                          ? commentBracketsParts.last
+                          : null,
+                      labelText: appLocalizations.userIdCommentLabel,
+                      hintText: appLocalizations.userIdCommentHint,
+                      errorText: commentError,
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                ],
+              ),
+            SizedBox(key: ValueKey("spacer2"), height: 8),
             TextField(
+              key: ValueKey("emailField"),
               controller: _controllerEmail,
               autocorrect: true,
               autofillHints: [AutofillHints.email],
@@ -604,7 +674,6 @@ class _UserIdInputDialogState extends State<_UserIdInputDialog> {
                 labelText: appLocalizations.userIdEmailLabel,
                 hintText: "user@example.com",
                 errorText: emailError,
-                suffixIcon: Icon(Icons.email),
               ),
             ),
           ],

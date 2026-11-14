@@ -11,7 +11,7 @@ import '../main.dart';
 
 class FeatureFlags {
   static late final FeatureClient? client;
-  static String get _targetingKey {
+  static String get targetingKey {
     final existingKey = prefs?.getString("targetingKey");
     if (existingKey != null) return existingKey;
 
@@ -47,7 +47,7 @@ class FeatureFlags {
   // MARK: Flags
 
   static EvaluationContext get _context => EvaluationContext.immutable(
-    targetingKey: _targetingKey,
+    targetingKey: targetingKey,
     attributes: {"beta": prefs?.getBool("beta") ?? false},
   );
 

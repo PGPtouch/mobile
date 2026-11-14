@@ -104,6 +104,28 @@ abstract class AppLocalizations {
   /// **'PGPtouch'**
   String get appTitle;
 
+  /// Suffix appended to the app title to indicate the current version
+  ///
+  /// In en, this message translates to:
+  /// **'Alpha'**
+  String get appTitleVersionSuffix;
+
+  /// Title of the dialog that shows details about the current app version
+  ///
+  /// In en, this message translates to:
+  /// **'Alpha version'**
+  String get appTitleVersionDetailsDialogTitle;
+
+  /// Description of the dialog that shows details about the current app version
+  ///
+  /// In en, this message translates to:
+  /// **'This is an alpha version of the PGPtouch mobile implementation.\nIt is not yet feature complete and may contain bugs. Versions may not be cross-compatible, and data may be lost when upgrading to a newer version. Not liable for any loss.\nCode revision: {branch}/{version}@{commit}'**
+  String appTitleVersionDetailsDialogDescription(
+    String branch,
+    int version,
+    String commit,
+  );
+
   /// Fallback shown when a value is not known
   ///
   /// In en, this message translates to:
@@ -830,6 +852,36 @@ abstract class AppLocalizations {
   /// **'Allow the app to track anonymous usage data to improve its services.'**
   String get settingsEnableTrackingDescription;
 
+  /// Title of the option that opens the privacy policy
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy policy'**
+  String get settingsPrivacyPolicy;
+
+  /// Headline of the section that shows feature rollout information
+  ///
+  /// In en, this message translates to:
+  /// **'Feature rollout'**
+  String get settingsFeatureRollout;
+
+  /// Title of the option that shows the feature flag number
+  ///
+  /// In en, this message translates to:
+  /// **'Flag number'**
+  String get settingsFlagNumber;
+
+  /// Title of the option that opens the inquiry page for data insight or deletion
+  ///
+  /// In en, this message translates to:
+  /// **'Open inquiry'**
+  String get settingsOpenClaim;
+
+  /// Subtitle of the option that opens the inquiry page for data insight or deletion
+  ///
+  /// In en, this message translates to:
+  /// **'If you want to request data insight or deletion, you can open a inquiry.'**
+  String get settingsOpenClaimDescription;
+
   /// Title of the option that opens the about screen
   ///
   /// In en, this message translates to:
@@ -1154,6 +1206,18 @@ abstract class AppLocalizations {
   /// **'If enabled, the key can later be used for encryption after export.'**
   String get createIdentityAllowKeyEncryptionDescription;
 
+  /// Title of the confirmation dialog that asks whether the user wants to discard unsaved changes
+  ///
+  /// In en, this message translates to:
+  /// **'Discard changes?'**
+  String get discardDialogTitle;
+
+  /// Description of the confirmation dialog that asks whether the user wants to discard unsaved changes
+  ///
+  /// In en, this message translates to:
+  /// **'You have unsaved changes. If you discard them, they will be lost.'**
+  String get discardDialogDescription;
+
   /// Title of the dialog used to add a new User ID
   ///
   /// In en, this message translates to:
@@ -1181,8 +1245,14 @@ abstract class AppLocalizations {
   /// Example comment shown as hint in the comment text field of a User ID
   ///
   /// In en, this message translates to:
-  /// **'At work'**
+  /// **'Work'**
   String get userIdCommentHint;
+
+  /// Format of the comment shown in parentheses after the name of a User ID
+  ///
+  /// In en, this message translates to:
+  /// **'(<br>)'**
+  String get userIdCommentBrackets;
 
   /// Label of the email text field of a User ID
   ///

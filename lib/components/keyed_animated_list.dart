@@ -68,14 +68,21 @@ class _KeyedAnimatedListState extends State<KeyedAnimatedList> {
     BuildContext context,
     Animation<double> animation,
     Widget child,
-  ) => SizeTransition(
-    sizeFactor: CurvedAnimation(
-      parent: animation,
-      curve: ExpressiveCurves.expressiveEffects.normal,
-      reverseCurve: ExpressiveCurves.expressiveEffects.normal.flipped,
-    ),
-    alignment: .topCenter,
-    child: child,
+  ) => AnimatedBuilder(
+    animation: animation,
+    builder: (_, _) {
+      final widget = Align(
+        alignment: .topCenter,
+        heightFactor: CurvedAnimation(
+          parent: animation,
+          curve: ExpressiveCurves.expressiveEffects.normal,
+          reverseCurve: ExpressiveCurves.expressiveEffects.normal.flipped,
+        ).value,
+        child: child,
+      );
+      if (animation.status == .completed) return widget;
+      return ClipRect(child: widget);
+    },
   );
 
   @override
@@ -85,6 +92,7 @@ class _KeyedAnimatedListState extends State<KeyedAnimatedList> {
     shrinkWrap: true,
     physics: const NeverScrollableScrollPhysics(),
     padding: EdgeInsets.zero,
+    clipBehavior: .none,
     itemBuilder: (context, index, animation) =>
         _transitionBuilder(context, animation, widget.children[index]),
   );

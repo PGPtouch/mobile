@@ -5,6 +5,38 @@
         "description": "The title of the application",
         "context": "App title and app bar title"
     },
+    "appTitleVersionSuffix": "Alpha",
+    "@appTitleVersionSuffix": {
+        "description": "Suffix appended to the app title to indicate the current version",
+        "context": "App title and app bar title"
+    },
+    "appTitleVersionDetailsDialogTitle": "Alpha version",
+    "@appTitleVersionDetailsDialogTitle": {
+        "description": "Title of the dialog that shows details about the current app version",
+        "context": "App version details dialog"
+    },
+    "appTitleVersionDetailsDialogDescription": "This is an alpha version of the PGPtouch mobile implementation.\nIt is not yet feature complete and may contain bugs. Versions may not be cross-compatible, and data may be lost when upgrading to a newer version. Not liable for any loss.\nCode revision: {branch}/{version}@{commit}",
+    "@appTitleVersionDetailsDialogDescription": {
+        "description": "Description of the dialog that shows details about the current app version",
+        "context": "App version details dialog",
+        "placeholders": {
+            "branch": {
+                "type": "String",
+                "example": "main",
+                "description": "Git branch name"
+            },
+            "version": {
+                "type": "int",
+                "example": "1",
+                "description": "Git revision id, meaning linear commit count since the first commit in the repository in the current branch"
+            },
+            "commit": {
+                "type": "String",
+                "example": "bdd2603",
+                "description": "Short Git commit hash of the current code revision, the latest commit in the current branch"
+            }
+        }
+    },
     "unknown": "Unknown",
     "@unknown": {
         "description": "Fallback shown when a value is not known",
@@ -662,6 +694,31 @@
         "description": "Subtitle of the switch that enables or disables anonymous usage tracking",
         "context": "Settings screen, privacy settings"
     },
+    "settingsPrivacyPolicy": "Privacy policy",
+    "@settingsPrivacyPolicy": {
+        "description": "Title of the option that opens the privacy policy",
+        "context": "Settings screen, privacy settings"
+    },
+    "settingsFeatureRollout": "Feature rollout",
+    "@settingsFeatureRollout": {
+        "description": "Headline of the section that shows feature rollout information",
+        "context": "Settings screen, privacy settings"
+    },
+    "settingsFlagNumber": "Flag number",
+    "@settingsFlagNumber": {
+        "description": "Title of the option that shows the feature flag number",
+        "context": "Settings screen, feature rollout section"
+    },
+    "settingsOpenClaim": "Open inquiry",
+    "@settingsOpenClaim": {
+        "description": "Title of the option that opens the inquiry page for data insight or deletion",
+        "context": "Settings screen, feature rollout section"
+    },
+    "settingsOpenClaimDescription": "If you want to request data insight or deletion, you can open a inquiry.",
+    "@settingsOpenClaimDescription": {
+        "description": "Subtitle of the option that opens the inquiry page for data insight or deletion",
+        "context": "Settings screen, feature rollout section"
+    },
     "settingsAboutApp": "About this app",
     "@settingsAboutApp": {
         "description": "Title of the option that opens the about screen",
@@ -938,6 +995,16 @@
         "description": "Description of the switch that decides whether the key may be used for encryption",
         "context": "Create identity screen, advanced section"
     },
+    "discardDialogTitle": "Discard changes?",
+    "@discardDialogTitle": {
+        "description": "Title of the confirmation dialog that asks whether the user wants to discard unsaved changes",
+        "context": "Create identity screen, discard changes dialog"
+    },
+    "discardDialogDescription": "You have unsaved changes. If you discard them, they will be lost.",
+    "@discardDialogDescription": {
+        "description": "Description of the confirmation dialog that asks whether the user wants to discard unsaved changes",
+        "context": "Create identity screen, discard changes dialog"
+    },
     "userIdDialogTitleNew": "New User ID",
     "@userIdDialogTitleNew": {
         "description": "Title of the dialog used to add a new User ID",
@@ -958,9 +1025,14 @@
         "description": "Label of the comment text field of a User ID",
         "context": "Create identity screen, User ID dialog"
     },
-    "userIdCommentHint": "At work",
+    "userIdCommentHint": "Work",
     "@userIdCommentHint": {
         "description": "Example comment shown as hint in the comment text field of a User ID",
+        "context": "Create identity screen, User ID dialog"
+    },
+    "userIdCommentBrackets": "(<br>)",
+    "@userIdCommentBrackets": {
+        "description": "Format of the comment shown in parentheses after the name of a User ID",
         "context": "Create identity screen, User ID dialog"
     },
     "userIdEmailLabel": "Email",

@@ -1224,6 +1224,21 @@ final class BluetoothSender extends BluetoothSenderState with _DisposeOnce {
   Future<bool> isConnected() async => _peripheral != null;
 
   @override
+  Future<int> maxSendLength() async {
+    final peripheral = _peripheral;
+    if (peripheral == null) return super.maxSendLength();
+    final length = await _withTimeout(
+      _centralManager.getMaximumWriteLength(
+        peripheral,
+        type: GATTCharacteristicWriteType.withResponse,
+      ),
+      "getMaximumWriteLength",
+    );
+    log("BluetoothSender", "maximum write length: $length");
+    return length;
+  }
+
+  @override
   Future<void> send(Uint8List data) async {
     log("BluetoothSender", "send: ${data.length} bytes: $data");
     final peripheral = _peripheral;
@@ -1262,6 +1277,10 @@ final class BluetoothReceiver extends BluetoothReceiverState with _DisposeOnce {
   _writeSubscription;
   StreamSubscription<CentralConnectionStateChangedEventArgs>?
   _connectionStateSubscription;
+
+  /// The centrals that wrote to this device, by the identifier handed to the
+  /// protocol manager; the platform needs the object to report its MTU.
+  final Map<UUID, Central> _centrals = {};
 
   /// Set by [dispose]. Checked throughout [start] so a cancellation racing
   /// an in-flight setup tears down the GATT service instead of letting
@@ -1386,6 +1405,7 @@ final class BluetoothReceiver extends BluetoothReceiverState with _DisposeOnce {
           _peripheralManager.respondWriteRequest(event.request),
           "respondWriteRequest",
         );
+        _centrals[event.central.uuid] = event.central;
         log("BluetoothReceiver", "responded to write request, dispatching...");
         await readRequestHandler(
           event.request.value,
@@ -1435,6 +1455,18 @@ final class BluetoothReceiver extends BluetoothReceiverState with _DisposeOnce {
   }
 
   @override
+  Future<int> maxResponseLength(Object? central) async {
+    final target = _centrals[central];
+    if (target == null) return super.maxResponseLength(central);
+    final length = await _withTimeout(
+      _peripheralManager.getMaximumNotifyLength(target),
+      "getMaximumNotifyLength",
+    );
+    log("BluetoothReceiver", "maximum notify length: $length");
+    return length;
+  }
+
+  @override
   Future<void> dispose() async {
     if (disposeAlreadyRan) {
       log("BluetoothReceiver", "dispose: already disposed, skipping");
@@ -1442,6 +1474,7 @@ final class BluetoothReceiver extends BluetoothReceiverState with _DisposeOnce {
     }
     log("BluetoothReceiver", "dispose");
     _isDisposed = true;
+    _centrals.clear();
     // Cancelled first, before any slow native teardown below, so a write
     // request racing with disposal can't reach the still-registered handler.
     await _writeSubscription?.cancel();

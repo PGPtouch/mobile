@@ -2,6 +2,8 @@ import 'package:aptabase_flutter/aptabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:material_helper/material_helper.dart';
 
+import '../main.dart';
+
 /// Anonymous, opt-in usage statistics.
 ///
 /// Rules for every event tracked through this class:
@@ -17,7 +19,7 @@ class ResearchPoint {
     String eventName, [
     Map<String, Object?>? props,
   ]) async {
-    if (prefs == null) return;
+    if (prefs == null || Env.trackKey == null || Env.trackBase == null) return;
     if (enabled) {
       Aptabase.instance.trackEvent(eventName, _sanitize(props));
     }

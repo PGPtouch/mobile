@@ -13,6 +13,21 @@ class AppLocalizationsDe extends AppLocalizations {
   String get appTitle => 'PGPtouch';
 
   @override
+  String get appTitleVersionSuffix => 'Alpha';
+
+  @override
+  String get appTitleVersionDetailsDialogTitle => 'Alpha-Version';
+
+  @override
+  String appTitleVersionDetailsDialogDescription(
+    String branch,
+    int version,
+    String commit,
+  ) {
+    return 'Das ist eine Alpha-Version der PGPtouch Implementierung für Mobilgeräte.\nSie ist möglicherweise noch nicht voll funktionsfähig und kann Fehler enthalten. Versionen sind möglicherweise nicht untereinander kompatibel und Daten können verloren gehen beim Aktualisieren auf eine neuere Version. Keine Haftung bei Verlust.\nCode-Revision: $branch/$version@$commit';
+  }
+
+  @override
   String get unknown => 'Unbekannt';
 
   @override
@@ -447,6 +462,22 @@ class AppLocalizationsDe extends AppLocalizations {
       'Erlaubt der App, anonyme Nutzungsdaten zu erfassen, um ihre Dienste zu verbessern.';
 
   @override
+  String get settingsPrivacyPolicy => 'Datenschutzerklärung';
+
+  @override
+  String get settingsFeatureRollout => 'Feature-Rollout';
+
+  @override
+  String get settingsFlagNumber => 'Flag-Nummer';
+
+  @override
+  String get settingsOpenClaim => 'Anspruch öffnen';
+
+  @override
+  String get settingsOpenClaimDescription =>
+      'Wenn du Dateneinsicht oder -löschung anfordern möchtest, öffne einen Anspruch.';
+
+  @override
   String get settingsAboutApp => 'Über diese App';
 
   @override
@@ -637,6 +668,13 @@ class AppLocalizationsDe extends AppLocalizations {
       'Wenn aktiviert, kann der Schlüssel nach dem Export später zum Verschlüsseln verwendet werden.';
 
   @override
+  String get discardDialogTitle => 'Änderungen verwerfen?';
+
+  @override
+  String get discardDialogDescription =>
+      'Du hast ungesicherte Änderungen. Wenn du sie verwirfst, gehen sie verloren.';
+
+  @override
   String get userIdDialogTitleNew => 'Neue User-ID';
 
   @override
@@ -649,7 +687,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get userIdCommentLabel => 'Kommentar';
 
   @override
-  String get userIdCommentHint => 'Bei der Arbeit';
+  String get userIdCommentHint => 'Arbeit';
+
+  @override
+  String get userIdCommentBrackets => '(<br>)';
 
   @override
   String get userIdEmailLabel => 'E-Mail';

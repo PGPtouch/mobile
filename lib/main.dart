@@ -20,6 +20,7 @@ import 'components/step_by_step_guide_dialog.dart';
 import 'components/two_state_widget.dart';
 import 'database/contact_store.dart';
 import 'database/key_store.dart';
+import 'generated/gitbaker.g.dart';
 import 'key_utils.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/screen_contacts.dart';
@@ -55,6 +56,8 @@ void main() async {
 
   if (Env.trackKey != null && Env.trackBase != null) {
     await Aptabase.init(Env.trackKey!, InitOptions(host: Env.trackBase!));
+  } else {
+    prefs?.setBool("researchEnabled", false);
   }
 
   await FeatureFlags.setup();
@@ -172,137 +175,154 @@ class _MainScreenState extends State<MainScreen>
   }
 
   @override
-  Widget build(BuildContext context) {
-    return ProtocolPermissionBuilder(
-      builder: (permissions) => ProtocolManagerBuilder(
-        onStart: () {
-          _navigationBlocked = true;
-          if (mounted) setState(() {});
-          _navigationBlockingController.forward();
-          _pageController.animateToPage(
-            1,
-            duration: ExpressiveCurves.expressiveSpatial.normalDuration,
-            curve: ExpressiveCurves.expressiveSpatial.normal,
-          );
-        },
-        onDone: () {
-          _navigationBlocked = false;
-          if (mounted) setState(() {});
-          _navigationBlockingController.reverse();
-        },
-        builder: (protocol) {
-          final contactMode = protocol.displayState?.lastEvent?.contactMode;
-          // final result = protocol.displayState?.lastEvent?.result;
+  Widget build(BuildContext context) => ProtocolPermissionBuilder(
+    builder: (permissions) => ProtocolManagerBuilder(
+      onStart: () {
+        _navigationBlocked = true;
+        if (mounted) setState(() {});
+        _navigationBlockingController.forward();
+        _pageController.animateToPage(
+          1,
+          duration: ExpressiveCurves.expressiveSpatial.normalDuration,
+          curve: ExpressiveCurves.expressiveSpatial.normal,
+        );
+      },
+      onDone: () {
+        _navigationBlocked = false;
+        if (mounted) setState(() {});
+        _navigationBlockingController.reverse();
+      },
+      builder: (protocol) {
+        final contactMode = protocol.displayState?.lastEvent?.contactMode;
+        // final result = protocol.displayState?.lastEvent?.result;
 
-          final contactsBody = ScreenContacts();
-          final runBody = ScreenRun(
-            permissions: permissions,
-            protocol: protocol,
-            selectedKey: _selectedKey,
-            selectedKeyUserIdDisplay: _selectedKeyUserIdDisplay,
-            selectedKeyExpiration: _selectedKeyExpiration,
-            onSelectIdentityRequest: () {
-              _currentPage = 2;
-              if (mounted) setState(() {});
-              _pageController.animateToPage(
-                _currentPage,
-                duration: ExpressiveCurves.expressiveSpatial.normalDuration,
-                curve: ExpressiveCurves.expressiveSpatial.normal,
-              );
-            },
-            onSelectedIdentityDetailsRequest: () async {
-              assert(_selectedKey != null, "Selected key must not be null");
-              await KeyStoreHandler.instance.unlock(
-                AppLocalizations.of(context),
-              );
-              final keyStore = KeyStoreHandler.instance.keyStore!;
+        final contactsBody = ScreenContacts();
+        final runBody = ScreenRun(
+          permissions: permissions,
+          protocol: protocol,
+          selectedKey: _selectedKey,
+          selectedKeyUserIdDisplay: _selectedKeyUserIdDisplay,
+          selectedKeyExpiration: _selectedKeyExpiration,
+          onSelectIdentityRequest: () {
+            _currentPage = 2;
+            if (mounted) setState(() {});
+            _pageController.animateToPage(
+              _currentPage,
+              duration: ExpressiveCurves.expressiveSpatial.normalDuration,
+              curve: ExpressiveCurves.expressiveSpatial.normal,
+            );
+          },
+          onSelectedIdentityDetailsRequest: () async {
+            assert(_selectedKey != null, "Selected key must not be null");
+            await KeyStoreHandler.instance.unlock(AppLocalizations.of(context));
+            final keyStore = KeyStoreHandler.instance.keyStore!;
 
-              final key = await (keyStore.select(
-                keyStore.keys,
-              )..where((key) => key.id.equals(_selectedKey!))).getSingle();
-              final passphraseIsStored = await KeyStoreHandler.instance
-                  .hasKeyPassphrase(key.fingerprint);
+            final key = await (keyStore.select(
+              keyStore.keys,
+            )..where((key) => key.id.equals(_selectedKey!))).getSingle();
+            final passphraseIsStored = await KeyStoreHandler.instance
+                .hasKeyPassphrase(key.fingerprint);
 
-              final userIds = (await key.getUserIds(keyStore))
-                  .toInterchangeable();
-              final users = userIds
-                  .map((user) => IdentityTileUserIdChip(user: user))
-                  .toList();
+            final userIds = (await key.getUserIds(keyStore))
+                .toInterchangeable();
+            final users = userIds
+                .map((user) => IdentityTileUserIdChip(user: user))
+                .toList();
 
-              final revocationReason = ValueNotifier<KeyRevocationReason?>(
-                null,
-              );
-              IdentityContactInterchangeableHandler(key)
-                  .revocationReason()
-                  .then((value) => revocationReason.value = value);
+            final revocationReason = ValueNotifier<KeyRevocationReason?>(null);
+            IdentityContactInterchangeableHandler(key)
+                .revocationReason()
+                .then((value) => revocationReason.value = value);
 
-              final parsedKey = ValueNotifier<PublicKey?>(null);
-              compute(
-                publicKeyFromBytes,
-                key.publicData,
-              ).then((value) => parsedKey.value = value);
+            final parsedKey = ValueNotifier<PublicKey?>(null);
+            compute(
+              publicKeyFromBytes,
+              key.publicData,
+            ).then((value) => parsedKey.value = value);
 
-              if (!context.mounted) return;
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                clipBehavior: Clip.antiAlias,
-                builder: (context) => IdentityDetailScreen(
-                  users: users,
-                  userIds: userIds,
-                  parsedKey: parsedKey,
-                  keyData: .new(key),
-                  passphraseIsStored: passphraseIsStored,
-                  isExpired:
-                      key.expiresAt != null &&
-                      key.expiresAt!.isBefore(DateTime.now()),
-                  isRevoked: key.isRevoked,
-                  revocationReason: revocationReason,
-                  onUpdate: () {
-                    if (parsedKey.value == null) return;
+            if (!context.mounted) return;
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              clipBehavior: Clip.antiAlias,
+              builder: (context) => IdentityDetailScreen(
+                users: users,
+                userIds: userIds,
+                parsedKey: parsedKey,
+                keyData: .new(key),
+                passphraseIsStored: passphraseIsStored,
+                isExpired:
+                    key.expiresAt != null &&
+                    key.expiresAt!.isBefore(DateTime.now()),
+                isRevoked: key.isRevoked,
+                revocationReason: revocationReason,
+                onUpdate: () {
+                  if (parsedKey.value == null) return;
 
-                    final display = userIds
-                        .map(
-                          (u) => UserId(
-                            name: u.name,
-                            comment: u.comment,
-                            email: u.email,
-                          ).toString(),
-                        )
-                        .join(",");
+                  final display = userIds
+                      .map(
+                        (u) => UserId(
+                          name: u.name,
+                          comment: u.comment,
+                          email: u.email,
+                        ).toString(),
+                      )
+                      .join(",");
 
-                    _selectedKeyUserIdDisplay = display;
-                    _selectedKeyExpiration = key.expiresAt?.toUtc();
-                    prefs!.setString("selectedKeyUserId", display);
-                    if (key.expiresAt != null) {
-                      prefs!.setInt(
-                        "selectedKeyExpiration",
-                        key.expiresAt!.toUtc().millisecondsSinceEpoch,
-                      );
-                    } else {
-                      prefs!.remove("selectedKeyExpiration");
-                    }
-                  },
-                  onDeleted: () {
-                    _selectedKey = null;
-                    _selectedKeyUserIdDisplay = null;
-                    prefs!.remove("selectedKey");
-                    prefs!.remove("selectedKeyUserId");
+                  _selectedKeyUserIdDisplay = display;
+                  _selectedKeyExpiration = key.expiresAt?.toUtc();
+                  prefs!.setString("selectedKeyUserId", display);
+                  if (key.expiresAt != null) {
+                    prefs!.setInt(
+                      "selectedKeyExpiration",
+                      key.expiresAt!.toUtc().millisecondsSinceEpoch,
+                    );
+                  } else {
                     prefs!.remove("selectedKeyExpiration");
-                    if (mounted) setState(() {});
-                  },
-                ),
-              );
-            },
-          );
-          final identitiesBody = ScreenIdentities(
-            onIdentitySelected: (id, display, expiration) {
-              protocol.stop();
+                  }
+                },
+                onDeleted: () {
+                  _selectedKey = null;
+                  _selectedKeyUserIdDisplay = null;
+                  prefs!.remove("selectedKey");
+                  prefs!.remove("selectedKeyUserId");
+                  prefs!.remove("selectedKeyExpiration");
+                  if (mounted) setState(() {});
+                },
+              ),
+            );
+          },
+        );
+        final identitiesBody = ScreenIdentities(
+          onIdentitySelected: (id, display, expiration) {
+            protocol.stop();
 
-              _selectedKey = id;
+            _selectedKey = id;
+            _selectedKeyUserIdDisplay = display;
+            _selectedKeyExpiration = expiration?.toUtc();
+            prefs!.setInt("selectedKey", id);
+            prefs!.setString("selectedKeyUserId", display);
+            if (expiration != null) {
+              prefs!.setInt(
+                "selectedKeyExpiration",
+                expiration.toUtc().millisecondsSinceEpoch,
+              );
+            } else {
+              prefs!.remove("selectedKeyExpiration");
+            }
+
+            _currentPage = 1;
+            if (mounted) setState(() {});
+            _pageController.animateToPage(
+              _currentPage,
+              duration: ExpressiveCurves.expressiveSpatial.normalDuration,
+              curve: ExpressiveCurves.expressiveSpatial.normal,
+            );
+          },
+          onIdentityUpdated: (id, display, expiration) {
+            if (_selectedKey == id) {
               _selectedKeyUserIdDisplay = display;
               _selectedKeyExpiration = expiration?.toUtc();
-              prefs!.setInt("selectedKey", id);
               prefs!.setString("selectedKeyUserId", display);
               if (expiration != null) {
                 prefs!.setInt(
@@ -312,66 +332,47 @@ class _MainScreenState extends State<MainScreen>
               } else {
                 prefs!.remove("selectedKeyExpiration");
               }
-
-              _currentPage = 1;
+            }
+          },
+          onIdentityDeleted: (id) {
+            if (_selectedKey == id) {
+              _selectedKey = null;
+              _selectedKeyUserIdDisplay = null;
+              _selectedKeyExpiration = null;
+              prefs!.remove("selectedKey");
+              prefs!.remove("selectedKeyUserId");
+              prefs!.remove("selectedKeyExpiration");
               if (mounted) setState(() {});
-              _pageController.animateToPage(
-                _currentPage,
-                duration: ExpressiveCurves.expressiveSpatial.normalDuration,
-                curve: ExpressiveCurves.expressiveSpatial.normal,
-              );
-            },
-            onIdentityUpdated: (id, display, expiration) {
-              if (_selectedKey == id) {
-                _selectedKeyUserIdDisplay = display;
-                _selectedKeyExpiration = expiration?.toUtc();
-                prefs!.setString("selectedKeyUserId", display);
-                if (expiration != null) {
-                  prefs!.setInt(
-                    "selectedKeyExpiration",
-                    expiration.toUtc().millisecondsSinceEpoch,
-                  );
-                } else {
-                  prefs!.remove("selectedKeyExpiration");
-                }
-              }
-            },
-            onIdentityDeleted: (id) {
-              if (_selectedKey == id) {
-                _selectedKey = null;
-                _selectedKeyUserIdDisplay = null;
-                _selectedKeyExpiration = null;
-                prefs!.remove("selectedKey");
-                prefs!.remove("selectedKeyUserId");
-                prefs!.remove("selectedKeyExpiration");
-                if (mounted) setState(() {});
-              }
-            },
-          );
+            }
+          },
+        );
 
-          final body = TweenAnimationBuilder<ColorScheme>(
-            tween: ColorSchemeTween(
-              begin: ColorScheme.of(context),
-              end: () {
-                final color = switch (contactMode?.value) {
-                  .initializing => Colors.yellow,
-                  .tapOther => Colors.purple,
-                  .holdOther => Colors.cyan,
-                  _ => null,
-                };
-                final current = ColorScheme.of(context);
-                if (color != null) {
-                  return ColorScheme.fromSeed(
-                    seedColor: color,
-                    brightness: current.brightness,
-                  );
-                }
-                return current;
-              }(),
-            ),
-            duration: ExpressiveCurves.expressiveSpatial.normalDuration,
-            curve: ExpressiveCurves.expressiveSpatial.normal,
-            builder: (_, colorScheme, _) => Scaffold(
+        final body = TweenAnimationBuilder<ColorScheme>(
+          tween: ColorSchemeTween(
+            begin: ColorScheme.of(context),
+            end: () {
+              final color = switch (contactMode?.value) {
+                .initializing => Colors.yellow,
+                .tapOther => Colors.purple,
+                .holdOther => Colors.cyan,
+                _ => null,
+              };
+              final current = ColorScheme.of(context);
+              if (color != null) {
+                return ColorScheme.fromSeed(
+                  seedColor: color,
+                  brightness: current.brightness,
+                );
+              }
+              return current;
+            }(),
+          ),
+          duration: ExpressiveCurves.expressiveSpatial.normalDuration,
+          curve: ExpressiveCurves.expressiveSpatial.normal,
+          builder: (_, colorScheme, _) {
+            final textTheme = TextTheme.of(context);
+            final appLocalizations = AppLocalizations.of(context);
+            return Scaffold(
               backgroundColor: _currentPage == 1
                   ? colorScheme.surface
                   : ColorScheme.of(context).surface,
@@ -396,14 +397,35 @@ class _MainScreenState extends State<MainScreen>
                         curve: ExpressiveCurves.expressiveSpatial.normal,
                         child: child,
                       ),
-                  child: Text(
-                    key: ValueKey(_currentPage),
-                    switch (_currentPage) {
-                      0 => AppLocalizations.of(context).navContacts,
-                      2 => AppLocalizations.of(context).navIdentities,
-                      _ => AppLocalizations.of(context).appTitle,
-                    },
-                  ),
+                  child: switch (_currentPage) {
+                    0 => Text(key: ValueKey(0), appLocalizations.navContacts),
+                    2 => Text(key: ValueKey(2), appLocalizations.navIdentities),
+                    _ => Row(
+                      mainAxisSize: .min,
+                      crossAxisAlignment: .center,
+                      children: [
+                        Text(key: ValueKey(1), "${appLocalizations.appTitle} "),
+                        InkWell(
+                          onTap: () => showVersionDetailsDialog(context),
+                          borderRadius: BorderRadius.circular(32),
+                          child: DecoratedBox(
+                            decoration: ShapeDecoration(
+                              color: colorScheme.surfaceBright,
+                              shape: StadiumBorder(),
+                            ),
+                            child: Padding(
+                              padding: EdgeInsets.all(4),
+                              child: Text(
+                                appLocalizations.appTitleVersionSuffix
+                                    .toUpperCase(),
+                                style: textTheme.labelSmall,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  },
                 ),
                 actions: [
                   IconButton(
@@ -423,8 +445,8 @@ class _MainScreenState extends State<MainScreen>
                         : AppLocalizations.of(context).appBarUnlockedTooltip,
                     icon: TwoStateWidgetManaged(
                       state: !KeyStoreHandler.instance.isLocked,
-                      from: Icon(Icons.lock),
-                      to: Icon(Icons.lock_open),
+                      from: Icon(Icons.lock_rounded),
+                      to: Icon(Icons.lock_open_rounded),
                     ),
                   ),
                   IconButton(
@@ -449,7 +471,7 @@ class _MainScreenState extends State<MainScreen>
                       );
                     },
                     tooltip: AppLocalizations.of(context).appBarSettingsTooltip,
-                    icon: Icon(Icons.tune),
+                    icon: Icon(Icons.tune_rounded),
                   ),
                 ],
               ),
@@ -721,20 +743,20 @@ class _MainScreenState extends State<MainScreen>
                   identitiesBody,
                 ],
               ),
-            ),
-          );
-          return PopScope(
-            canPop: protocol.displayState == null,
-            onPopInvokedWithResult: (didPop, _) async {
-              if (didPop) return;
-              await protocol.stop();
-            },
-            child: body,
-          );
-        },
-      ),
-    );
-  }
+            );
+          },
+        );
+        return PopScope(
+          canPop: protocol.displayState == null,
+          onPopInvokedWithResult: (didPop, _) async {
+            if (didPop) return;
+            await protocol.stop();
+          },
+          child: body,
+        );
+      },
+    ),
+  );
 }
 
 class ColorSchemeTween extends Tween<ColorScheme> {
@@ -799,5 +821,24 @@ class _TitleSlideTransitionState extends State<_TitleSlideTransition> {
         child: Opacity(opacity: opacity.clamp(0.0, 1.0), child: child),
       );
     },
+  );
+}
+
+Future<void> showVersionDetailsDialog(BuildContext context) {
+  final appLocalizations = AppLocalizations.of(context);
+  final currentBranch = GitBaker.currentBranch;
+  return showAlertDialog(
+    context: context,
+    title: appLocalizations.appTitleVersionDetailsDialogTitle,
+    content: Text(
+      hyphenate(
+        appLocalizations.appTitleVersionDetailsDialogDescription(
+          currentBranch.name,
+          currentBranch.revision,
+          currentBranch.commits.last.hashAbbreviated,
+        ),
+      ),
+      textAlign: .justify,
+    ),
   );
 }
