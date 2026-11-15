@@ -73,14 +73,14 @@ dependency_overrides:
   flutter_secure_storage:
     git: https://github.com/PGPtouch/flutter_secure_storage.git
   material_helper:
-    # git:
-    #   url: https://github.com/JHubi1/material.git
-    #   path: packages/material_helper
-    path: C:/Users/jakob/Documents/GitHub/material/packages/material_helper
+    git:
+      url: https://github.com/JHubi1/material.git
+      path: packages/material_helper
+    # path: C:/Users/jakob/Documents/GitHub/material/packages/material_helper
   material_graphics:
-    # git:
-    #   url: https://github.com/JHubi1/material.git
-    #   path: packages/material_graphics
-    path: C:/Users/jakob/Documents/GitHub/material/packages/material_graphics
-  shared:
-    path: C:/Users/jakob/Documents/GitHub/shared
+    git:
+      url: https://github.com/JHubi1/material.git
+      path: packages/material_graphics
+    # path: C:/Users/jakob/Documents/GitHub/material/packages/material_graphics
+  # shared:
+  #   path: C:/Users/jakob/Documents/GitHub/shared

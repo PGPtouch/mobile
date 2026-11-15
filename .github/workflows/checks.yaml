@@ -1,0 +1,61 @@
+name: Checks
+on:
+  push:
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.50.0'
+          channel: stable
+          cache: true
+      - uses: extractions/setup-just@v3
+
+      - name: Install dependencies
+        id: dependencies
+        run: just get
+
+      - name: Generate
+        id: gen
+        if: ${{ steps.dependencies.outcome == 'success' }}
+        continue-on-error: true
+        run: just gen
+      - name: Analyze
+        id: analyze
+        if: ${{ steps.dependencies.outcome == 'success' }}
+        continue-on-error: true
+        run: just analyze
+      - name: Test
+        id: test
+        if: ${{ steps.dependencies.outcome == 'success' }}
+        continue-on-error: true
+        run: just test
+
+      - name: Summarize results
+        if: ${{ always() }}
+        env:
+          DEPENDENCIES: ${{ steps.dependencies.outcome || 'skipped' }}
+          GENERATION: ${{ steps.gen.outcome || 'skipped' }}
+          ANALYSIS: ${{ steps.analyze.outcome || 'skipped' }}
+          TESTS: ${{ steps.test.outcome || 'skipped' }}
+        run: |
+          {
+            echo '## Checks'
+            echo '| Step | Result |'
+            echo '| --- | --- |'
+            echo "| Dependencies | $DEPENDENCIES |"
+            echo "| Generation | $GENERATION |"
+            echo "| Analysis | $ANALYSIS |"
+            echo "| Tests | $TESTS |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail if any check failed or was skipped
+        if: ${{ always() && (steps.dependencies.outcome != 'success' || steps.gen.outcome != 'success' || steps.analyze.outcome != 'success' || steps.test.outcome != 'success') }}
+        run: exit 1

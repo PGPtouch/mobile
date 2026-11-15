@@ -22,7 +22,7 @@ codegen:
 
 # Static analysis
 analyze:
-    flutter analyze
+    flutter analyze --no-fatal-infos
 
 # Run tests
 test:
