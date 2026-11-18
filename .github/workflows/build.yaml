@@ -1,4 +1,4 @@
-name: Build APK
+name: Build
 on:
   workflow_dispatch:
 permissions:
@@ -16,6 +16,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
+          cache: gradle
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.50.0'
@@ -26,6 +27,13 @@ jobs:
       - name: Install dependencies
         run: just get
 
+      - name: Configure optional environment
+        env:
+          ENVIRONMENT: ${{ vars.ENVIRONMENT }}
+        run: |
+          if [[ -n "$ENVIRONMENT" ]]; then
+            printf '%s' "$ENVIRONMENT" > .env
+          fi
       - name: Configure release signing
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -76,10 +84,12 @@ jobs:
           PY
 
       - name: Build APK
-        run: just build-apk
+        run: |
+          just build-apk
+          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/PGPtouch.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/PGPtouch.apk
           if-no-files-found: error

@@ -1282,6 +1282,15 @@ final class BluetoothReceiver extends BluetoothReceiverState with _DisposeOnce {
   /// protocol manager; the platform needs the object to report its MTU.
   final Map<UUID, Central> _centrals = {};
 
+  /// The ATT MTU each central negotiated, from [PeripheralManager.mtuChanged].
+  ///
+  /// Absent until the central's MTU exchange reaches this device, in which
+  /// case the platform silently reports the 23 byte default (20 byte payload).
+  final Map<UUID, int> _mtus = {};
+  final Map<UUID, Completer<void>> _mtuWaiters = {};
+  final Set<UUID> _mtuWaitedFor = {};
+  StreamSubscription<CentralMTUChangedEventArgs>? _mtuSubscription;
+
   /// Set by [dispose]. Checked throughout [start] so a cancellation racing
   /// an in-flight setup tears down the GATT service instead of letting
   /// advertising/subscriptions start undetected.
@@ -1374,6 +1383,16 @@ final class BluetoothReceiver extends BluetoothReceiverState with _DisposeOnce {
       return;
     }
 
+    _mtuSubscription = _peripheralManager.mtuChanged.listen((event) {
+      log(
+        "BluetoothReceiver",
+        "mtuChanged: central=${event.central.uuid} mtu=${event.mtu}",
+      );
+      _mtus[event.central.uuid] = event.mtu;
+      final waiter = _mtuWaiters.remove(event.central.uuid);
+      if (waiter != null && !waiter.isCompleted) waiter.complete();
+    });
+
     _connectionStateSubscription = _peripheralManager.connectionStateChanged
         .listen((event) {
           log(
@@ -1382,6 +1401,8 @@ final class BluetoothReceiver extends BluetoothReceiverState with _DisposeOnce {
                 "central=${event.central.uuid} state=${event.state}",
           );
           if (event.state == ConnectionState.disconnected) {
+            _mtus.remove(event.central.uuid);
+            _mtuWaitedFor.remove(event.central.uuid);
             centralDisconnected(central: event.central.uuid);
           }
         });
@@ -1430,6 +1451,8 @@ final class BluetoothReceiver extends BluetoothReceiverState with _DisposeOnce {
       log("BluetoothReceiver", "start: disposed before advertising, aborting");
       await _writeSubscription?.cancel();
       _writeSubscription = null;
+      await _mtuSubscription?.cancel();
+      _mtuSubscription = null;
       await _connectionStateSubscription?.cancel();
       _connectionStateSubscription = null;
       try {
@@ -1458,11 +1481,33 @@ final class BluetoothReceiver extends BluetoothReceiverState with _DisposeOnce {
   Future<int> maxResponseLength(Object? central) async {
     final target = _centrals[central];
     if (target == null) return super.maxResponseLength(central);
+    final uuid = target.uuid;
+    if (!_mtus.containsKey(uuid) && _mtuWaitedFor.add(uuid)) {
+      final waiter = _mtuWaiters.putIfAbsent(uuid, Completer.new);
+      await waiter.future.timeout(
+        const Duration(seconds: 1),
+        onTimeout: () => _mtuWaiters.remove(uuid),
+      );
+    }
+    if (!_mtus.containsKey(uuid)) {
+      // Android only reports an MTU to the GATT server when the exchange is
+      // seen by it; otherwise the plugin's answer is the 20 byte default,
+      // which is not the real limit. Assume the MTU requested by the sender.
+      final length = await super.maxResponseLength(central);
+      log(
+        "BluetoothReceiver",
+        "no MTU exchange seen for $uuid, assuming $length",
+      );
+      return length;
+    }
     final length = await _withTimeout(
       _peripheralManager.getMaximumNotifyLength(target),
       "getMaximumNotifyLength",
     );
-    log("BluetoothReceiver", "maximum notify length: $length");
+    log(
+      "BluetoothReceiver",
+      "maximum notify length: $length (mtu=${_mtus[uuid]})",
+    );
     return length;
   }
 
@@ -1475,8 +1520,14 @@ final class BluetoothReceiver extends BluetoothReceiverState with _DisposeOnce {
     log("BluetoothReceiver", "dispose");
     _isDisposed = true;
     _centrals.clear();
-    // Cancelled first, before any slow native teardown below, so a write
-    // request racing with disposal can't reach the still-registered handler.
+    _mtus.clear();
+    _mtuWaitedFor.clear();
+    for (final waiter in _mtuWaiters.values) {
+      if (!waiter.isCompleted) waiter.complete();
+    }
+    _mtuWaiters.clear();
+    await _mtuSubscription?.cancel();
+    _mtuSubscription = null;
     await _writeSubscription?.cancel();
     _writeSubscription = null;
     await _connectionStateSubscription?.cancel();
